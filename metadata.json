@@ -1,0 +1,8 @@
+{
+  "name": "Rocket Queue - Smart Queue Management",
+  "description": "A mobile-first queue management system for vendors and customers with AI-powered wait time estimations and QR-based discovery.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
