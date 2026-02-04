@@ -14,6 +14,7 @@ export const getMockShops = (): Shop[] => [
     closingTime: '20:00',
     lunchStart: '13:00',
     lunchEnd: '14:00',
+    isVerified: true,
     queues: [
       {
         id: 'q-r-1',
@@ -47,6 +48,7 @@ export const getMockShops = (): Shop[] => [
     closingTime: '18:00',
     lunchStart: '12:00',
     lunchEnd: '12:30',
+    isVerified: false,
     queues: [
       {
         id: 'q-r-3',

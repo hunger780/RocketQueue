@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { 
   User as UserIcon, 
@@ -28,12 +28,74 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   });
   const [loading, setLoading] = useState(false);
 
+  // Initialize Google Sign-In
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      // Fix: Cast window to any to access the dynamically loaded google object and avoid TS errors
+      const google = (window as any).google;
+      if (google) {
+        google.accounts.id.initialize({
+          client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com', // Placeholder
+          callback: handleGoogleResponse,
+        });
+        
+        const parent = document.getElementById('google-signin-btn');
+        if (parent) {
+          google.accounts.id.renderButton(parent, {
+            theme: 'outline',
+            size: 'large',
+            width: parent.offsetWidth,
+            text: 'continue_with',
+            shape: 'pill'
+          });
+        }
+      }
+    };
+
+    // Retry initialization in case script loads slowly
+    const timer = setTimeout(initializeGoogleSignIn, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const parseJwt = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const handleGoogleResponse = (response: any) => {
+    setLoading(true);
+    const payload = parseJwt(response.credential);
+    
+    if (payload) {
+      setTimeout(() => {
+        const newUser: User = {
+          id: payload.sub,
+          name: payload.name,
+          email: payload.email,
+          phone: '', // Google doesn't usually provide phone without extra scopes
+          role: role
+        };
+        onLogin(newUser);
+        setLoading(false);
+      }, 500);
+    } else {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     setTimeout(() => {
-      // Special check for mock data user
       const isMockUser = formData.email.toLowerCase() === 'r@r.com';
       const newUser: User = {
         id: isMockUser ? 'vendor-r-mock' : Math.random().toString(36).substr(2, 9),
@@ -191,6 +253,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 )}
               </button>
             </form>
+
+            <div className="mt-6 flex items-center gap-4">
+              <div className="h-px flex-1 bg-slate-100"></div>
+              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Or</span>
+              <div className="h-px flex-1 bg-slate-100"></div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div id="google-signin-btn" className="w-full flex justify-center"></div>
+            </div>
 
             <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
               <button 

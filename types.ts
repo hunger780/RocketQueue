@@ -26,6 +26,7 @@ export interface Shop {
   closingTime?: string;
   lunchStart?: string;
   lunchEnd?: string;
+  isVerified?: boolean;
   queues: Queue[];
 }
 

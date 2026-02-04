@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
-import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon } from 'lucide-react';
+import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon, BadgeCheck } from 'lucide-react';
 import { estimateWaitTime, searchShops } from '../services/geminiService';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -135,7 +135,10 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h3 className="text-2xl font-black tracking-tight">{mq.shopName}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl font-black tracking-tight">{mq.shopName}</h3>
+                      {mq.shop.isVerified && <BadgeCheck className="w-6 h-6 text-white fill-indigo-400" />}
+                    </div>
                     <p className="text-indigo-200 text-sm font-bold uppercase tracking-widest">{mq.queueName}</p>
                   </div>
                   <button 
@@ -232,7 +235,10 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
                       <MapPin className="w-8 h-8" />
                     </div>
                     <div>
-                      <h4 className="text-xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">{s.name}</h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-xl font-black text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">{s.name}</h4>
+                        {s.isVerified && <BadgeCheck className="w-5 h-5 text-indigo-600" />}
+                      </div>
                       <p className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.15em] mt-1">{s.category}</p>
                       <p className="text-xs text-slate-400 mt-2 font-semibold italic flex items-center gap-1">
                          {getFirstLineAddress(s.address)}
@@ -256,7 +262,15 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
             
             <div className="flex justify-between items-start mb-10">
               <div className="space-y-2">
-                <h3 className="text-3xl font-black text-gray-900 tracking-tighter leading-none">{selectedShop.name}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-3xl font-black text-gray-900 tracking-tighter leading-none">{selectedShop.name}</h3>
+                  {selectedShop.isVerified && <BadgeCheck className="w-8 h-8 text-indigo-600" />}
+                </div>
+                {selectedShop.isVerified && (
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 w-fit">
+                    <BadgeCheck className="w-3.5 h-3.5" /> Verified Business
+                  </div>
+                )}
                 <p className="text-sm text-slate-500 font-bold flex items-center gap-1.5"><MapPin className="w-4 h-4 text-indigo-500" /> {selectedShop.address}</p>
                 {selectedShop.landmark && <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest bg-indigo-50 inline-block px-2 py-1 rounded">Near {selectedShop.landmark}</p>}
               </div>
