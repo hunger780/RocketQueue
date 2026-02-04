@@ -103,8 +103,8 @@ const App: React.FC = () => {
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl pointer-events-auto animate-in slide-in-from-right duration-300">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
               <h3 className="font-bold text-lg text-gray-900">Notifications</h3>
-              <button onClick={() => setShowNotifications(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-400" />
+              <button onClick={() => setShowNotifications(false)} className="p-2 bg-slate-200 hover:bg-slate-300 rounded-full transition-colors">
+                <X className="w-5 h-5 text-slate-700" />
               </button>
             </div>
             <div className="overflow-y-auto max-h-[calc(100vh-80px)]">
