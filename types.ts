@@ -13,12 +13,6 @@ export interface User {
   role: UserRole;
 }
 
-export interface TimeslotConfig {
-  isEnabled: boolean;
-  slotDuration: number; // in minutes
-  maxPerSlot: number;
-}
-
 export interface Shop {
   id: string;
   vendorId: string;
@@ -41,7 +35,6 @@ export interface Queue {
   name: string;
   isActive: boolean;
   entries: QueueEntry[];
-  timeslotConfig?: TimeslotConfig;
 }
 
 export enum QueueStatus {
@@ -63,9 +56,6 @@ export interface QueueEntry {
   status: QueueStatus;
   estimatedMinutes: number;
   alertThreshold?: number; // Minutes before turn to notify
-  rating?: number; // 1-5
-  feedback?: string;
-  bookedSlotStart?: number; // Timestamp for scheduled slot
 }
 
 export interface Notification {

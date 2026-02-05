@@ -20,14 +20,10 @@ export const getMockShops = (): Shop[] => [
         id: 'q-r-1',
         name: 'General Consultation',
         isActive: true,
-        timeslotConfig: {
-          isEnabled: true,
-          slotDuration: 30,
-          maxPerSlot: 1
-        },
         entries: [
-          { id: 'e-1', userId: 'u-1', userName: 'Sarah Jenkins', joinedAt: Date.now() - 1200000, status: QueueStatus.IN_PROGRESS, estimatedMinutes: 5, bookedSlotStart: new Date().setHours(9, 0, 0, 0) },
-          { id: 'e-2', userId: 'u-2', userName: 'Michael Chen', joinedAt: Date.now() - 600000, status: QueueStatus.WAITING, estimatedMinutes: 15, bookedSlotStart: new Date().setHours(9, 30, 0, 0) },
+          { id: 'e-1', userId: 'u-1', userName: 'Sarah Jenkins', joinedAt: Date.now() - 1200000, status: QueueStatus.IN_PROGRESS, estimatedMinutes: 5 },
+          { id: 'e-2', userId: 'u-2', userName: 'Michael Chen', joinedAt: Date.now() - 600000, status: QueueStatus.WAITING, estimatedMinutes: 15 },
+          { id: 'e-3', userId: 'u-3', userName: 'Emma Wilson', joinedAt: Date.now() - 300000, status: QueueStatus.WAITING, estimatedMinutes: 25 },
         ]
       },
       {
