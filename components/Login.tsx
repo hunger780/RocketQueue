@@ -28,14 +28,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   });
   const [loading, setLoading] = useState(false);
 
-  // Initialize Google Sign-In
   useEffect(() => {
     const initializeGoogleSignIn = () => {
-      // Fix: Cast window to any to access the dynamically loaded google object and avoid TS errors
       const google = (window as any).google;
       if (google) {
         google.accounts.id.initialize({
-          client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com', // Placeholder
+          client_id: 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com', 
           callback: handleGoogleResponse,
         });
         
@@ -52,7 +50,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
     };
 
-    // Retry initialization in case script loads slowly
     const timer = setTimeout(initializeGoogleSignIn, 1000);
     return () => clearTimeout(timer);
   }, []);
@@ -80,7 +77,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           id: payload.sub,
           name: payload.name,
           email: payload.email,
-          phone: '', // Google doesn't usually provide phone without extra scopes
+          phone: '', 
           role: role
         };
         onLogin(newUser);
@@ -160,7 +157,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </h2>
               <p className="text-slate-400 text-sm mt-1">
                 {isVendor 
-                  ? 'Manage your business queues with AI insights'
+                  ? 'Manage your business queues with smart insights'
                   : 'Join queues from anywhere, track in real-time'}
               </p>
             </div>
@@ -280,7 +277,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <ShieldCheck className="w-3.5 h-3.5" /> Secure
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-[0.1em]">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> AI-Powered
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Real-time
                 </div>
               </div>
             </div>

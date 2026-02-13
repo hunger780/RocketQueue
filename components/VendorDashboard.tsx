@@ -182,7 +182,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
       ctx.fillStyle = '#9ca3af';
       ctx.font = 'bold 24px Inter, sans-serif';
-      ctx.fillText('POWERED BY ROCKET QUEUE AI', canvas.width / 2, canvas.height - 50);
+      ctx.fillText('POWERED BY ROCKET QUEUE', canvas.width / 2, canvas.height - 50);
 
       const link = document.createElement('a');
       link.download = `RocketQueue-${showQrModal.name.replace(/\s+/g, '-')}.png`;

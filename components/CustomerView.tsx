@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
 import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon, BadgeCheck } from 'lucide-react';
-import { estimateWaitTime, searchShops } from '../services/geminiService';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface CustomerViewProps {
@@ -63,13 +62,18 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     }
   }, [showScanner, shops]);
 
-  const handleSearch = async () => {
-    if (!searchQuery) { setFilteredShops(shops); return; }
-    setIsSearching(true);
-    const rankedIds = await searchShops(searchQuery, shops);
-    const result = shops.filter(s => rankedIds.includes(s.id));
+  const handleSearch = () => {
+    if (!searchQuery) { 
+      setFilteredShops(shops); 
+      return; 
+    }
+    const query = searchQuery.toLowerCase();
+    const result = shops.filter(s => 
+      s.name.toLowerCase().includes(query) || 
+      s.category.toLowerCase().includes(query) ||
+      s.address.toLowerCase().includes(query)
+    );
     setFilteredShops(result);
-    setIsSearching(false);
   };
 
   const handleNearbySearch = () => {
@@ -77,12 +81,10 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log("Location found:", position.coords.latitude, position.coords.longitude);
           setFilteredShops(shops.slice(0, 3));
           setIsLocating(false);
         },
         (error) => {
-          console.error("Error getting location", error);
           setIsLocating(false);
           alert("Could not access your location. Please check your permissions.");
         }
@@ -93,9 +95,11 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     }
   };
 
-  const joinQueue = async (shop: Shop, queue: Queue) => {
+  const joinQueue = (shop: Shop, queue: Queue) => {
     const queueLength = queue.entries.filter(e => e.status === QueueStatus.WAITING).length;
-    const estMinutes = await estimateWaitTime(queueLength, shop.category);
+    // Simple estimation logic: 15 minutes per person in line
+    const estMinutes = (queueLength + 1) * 15;
+    
     const newEntry: QueueEntry = { 
       id: 'entry-' + Math.random().toString(36).substr(2, 9), 
       userId: user.id, 
@@ -104,7 +108,14 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
       status: QueueStatus.WAITING, 
       estimatedMinutes: estMinutes 
     };
-    setShops(prevShops => prevShops.map(s => s.id === shop.id ? { ...s, queues: s.queues.map(q => q.id === queue.id ? { ...q, entries: [...q.entries, newEntry] } : q) } : s));
+    
+    setShops(prevShops => prevShops.map(s => s.id === shop.id ? { 
+      ...s, 
+      queues: s.queues.map(q => q.id === queue.id ? { 
+        ...q, 
+        entries: [...q.entries, newEntry] 
+      } : q) 
+    } : s));
     setSelectedShop(null);
   };
 
@@ -163,7 +174,6 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
                   </div>
                 </div>
 
-                {/* Quick Actions for Active Queue */}
                 <div className="flex gap-3 mt-2">
                   <button 
                     onClick={() => openDirections(mq.shop.address)}
@@ -277,7 +287,6 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
               <button onClick={() => setSelectedShop(null)} className="p-3 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all"><X className="w-6 h-6" /></button>
             </div>
 
-            {/* Modal Actions */}
             <div className="flex gap-4 mb-10">
               <button 
                 onClick={() => openDirections(selectedShop.address)}
