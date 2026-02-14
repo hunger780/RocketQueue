@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
-import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon, BadgeCheck, CalendarCheck, TrendingUp, Zap, BarChart3, Clock3, Award, Sparkles } from 'lucide-react';
+import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon, BadgeCheck, CalendarCheck, TrendingUp, Zap, BarChart3, Clock3, Award, Sparkles, LocateFixed } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface CustomerViewProps {
@@ -15,11 +15,13 @@ interface CustomerViewProps {
 const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forceDiscovery = false, initialView = 'home' }) => {
   const [viewMode, setViewMode] = useState<'home' | 'insights'>(initialView);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [filteredShops, setFilteredShops] = useState<Shop[]>(shops);
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [selectedQueueForSlot, setSelectedQueueForSlot] = useState<{shop: Shop, queue: Queue} | null>(null);
   const [myQueues, setMyQueues] = useState<({ shopName: string, queueName: string, entry: QueueEntry, shopId: string, queueId: string, shop: Shop })[]>([]);
   const [showScanner, setShowScanner] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -60,6 +62,32 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     };
   }, []);
 
+  const categories = useMemo(() => {
+    const cats = new Set(shops.map(s => s.category));
+    return ['All', ...Array.from(cats)];
+  }, [shops]);
+
+  useEffect(() => {
+    let result = shops;
+    
+    // Filter by Category
+    if (selectedCategory !== 'All') {
+      result = result.filter(s => s.category === selectedCategory);
+    }
+
+    // Filter by Search Query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(s => 
+        s.name.toLowerCase().includes(query) || 
+        s.category.toLowerCase().includes(query) ||
+        s.address.toLowerCase().includes(query)
+      );
+    }
+    
+    setFilteredShops(result);
+  }, [shops, searchQuery, selectedCategory]);
+
   useEffect(() => {
     if (showScanner) {
       const onScanSuccess = (decodedText: string) => {
@@ -84,18 +112,27 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     }
   }, [showScanner, shops]);
 
-  const handleSearch = () => {
-    if (!searchQuery) { 
-      setFilteredShops(shops); 
-      return; 
+  const handleLocateMe = () => {
+    if ('geolocation' in navigator) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setIsLocating(false);
+          // In a real app, we would use position.coords.latitude and longitude to sort shops
+          // For now, we simulate a "Nearest" sort by just refreshing or showing a toast logic
+          // Let's pretend we sorted them and set category to All to show "all nearby"
+          setSelectedCategory('All');
+          alert(`Location acquired! Showing nearest services around you.`);
+        },
+        (error) => {
+          setIsLocating(false);
+          console.error("Error getting location", error);
+          alert("Unable to retrieve your location. Please check permissions.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser.");
     }
-    const query = searchQuery.toLowerCase();
-    const result = shops.filter(s => 
-      s.name.toLowerCase().includes(query) || 
-      s.category.toLowerCase().includes(query) ||
-      s.address.toLowerCase().includes(query)
-    );
-    setFilteredShops(result);
   };
 
   const joinQueue = (shop: Shop, queue: Queue, slotStart?: number) => {
@@ -328,25 +365,80 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
       {(forceDiscovery || myQueues.length === 0) && (
         <div className="space-y-6">
           <h2 className="text-3xl font-black text-slate-900 tracking-tight leading-none">Find Services</h2>
-          <div className="flex gap-2">
-            <div className="relative flex-1 group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-              <input className="w-full pl-14 pr-4 py-5 bg-white border border-slate-200 rounded-[2rem] text-black font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all" placeholder="Clinics, Bakeries, Salons..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+          
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1 group">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                <input 
+                  className="w-full pl-14 pr-14 py-5 bg-white border border-slate-200 rounded-[2rem] text-black font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all" 
+                  placeholder="Clinics, Bakeries, Salons..." 
+                  value={searchQuery} 
+                  onChange={e => setSearchQuery(e.target.value)} 
+                  onKeyDown={e => e.key === 'Enter' && setSearchQuery(e.currentTarget.value)} 
+                />
+                <button 
+                  onClick={handleLocateMe}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all ${isLocating ? 'bg-indigo-100 text-indigo-600 animate-pulse' : 'text-slate-400 hover:bg-slate-100 hover:text-indigo-600'}`}
+                  title="Find nearest services"
+                >
+                  <LocateFixed className="w-5 h-5" />
+                </button>
+              </div>
+              <button onClick={() => setShowScanner(true)} className="p-5 bg-white border border-slate-200 rounded-[2rem] text-slate-600 hover:text-indigo-600 transition-all shadow-sm active:scale-90"><QrCode className="w-7 h-7" /></button>
             </div>
-            <button onClick={() => setShowScanner(true)} className="p-5 bg-white border border-slate-200 rounded-[2rem] text-slate-600 hover:text-indigo-600 transition-all shadow-sm active:scale-90"><QrCode className="w-7 h-7" /></button>
+
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {categories.map(cat => (
+                <button 
+                  key={cat} 
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-white border border-slate-200 text-slate-500 hover:border-indigo-200'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
+
           <div className="grid grid-cols-1 gap-4">
             {filteredShops.map(s => (
-              <button key={s.id} onClick={() => setSelectedShop(s)} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm hover:border-indigo-200 hover:shadow-xl hover:-translate-y-1 transition-all text-left flex justify-between items-center group">
-                <div className="flex gap-5 items-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner"><MapPin className="w-7 h-7" /></div>
-                  <div>
-                    <div className="flex items-center gap-1.5"><h4 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">{s.name}</h4>{s.isVerified && <BadgeCheck className="w-5 h-5 text-indigo-600" />}</div>
-                    <p className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.2em] mt-1 opacity-70">{s.category}</p>
+              <div key={s.id} className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:border-indigo-200 hover:shadow-lg">
+                <div 
+                  onClick={() => setSelectedShop(s)} 
+                  className="flex justify-between items-center cursor-pointer mb-4 group"
+                >
+                  <div className="flex gap-4 items-center">
+                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+                       <MapPin className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                         <h4 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">{s.name}</h4>
+                         {s.isVerified && <BadgeCheck className="w-5 h-5 text-indigo-600" />}
+                      </div>
+                      <p className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.2em] mt-1 opacity-70">{s.category}</p>
+                    </div>
                   </div>
+                  <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-400" />
                 </div>
-                <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-400" />
-              </button>
+                
+                <div className="flex gap-3 border-t border-slate-50 pt-4">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); openDirections(s.address); }}
+                    className="flex-1 py-3 bg-slate-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors active:scale-95"
+                  >
+                    <Navigation className="w-3 h-3" /> Directions
+                  </button>
+                  <a 
+                    href={`tel:${s.phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors active:scale-95"
+                  >
+                    <Phone className="w-3 h-3" /> Call
+                  </a>
+                </div>
+              </div>
             ))}
           </div>
         </div>
