@@ -331,7 +331,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
           <div className="flex gap-2">
             <div className="relative flex-1 group">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-              <input className="w-full pl-14 pr-4 py-5 bg-white border border-slate-200 rounded-[2rem] text-slate-900 font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all" placeholder="Clinics, Bakeries, Salons..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+              <input className="w-full pl-14 pr-4 py-5 bg-white border border-slate-200 rounded-[2rem] text-black font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all" placeholder="Clinics, Bakeries, Salons..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
             </div>
             <button onClick={() => setShowScanner(true)} className="p-5 bg-white border border-slate-200 rounded-[2rem] text-slate-600 hover:text-indigo-600 transition-all shadow-sm active:scale-90"><QrCode className="w-7 h-7" /></button>
           </div>
@@ -371,7 +371,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
                     <span className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"><Users className="w-3.5 h-3.5 text-indigo-400" /> {q.entries.filter(e => !isTerminalStatus(e.status)).length} Waiting</span>
                   </div>
                   <button onClick={() => q.slotConfig?.isEnabled ? setSelectedQueueForSlot({shop: selectedShop, queue: q}) : joinQueue(selectedShop, q)} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:bg-indigo-700 transition-all active:scale-95">
-                    {q.slotConfig?.isEnabled ? 'Schedule' : 'Join'}
+                    {q.slotConfig?.isEnabled ? 'Book Slot' : 'Join'}
                   </button>
                 </div>
               ))}

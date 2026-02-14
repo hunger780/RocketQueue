@@ -33,6 +33,17 @@ export const getMockShops = (): Shop[] => [
         entries: [
           { id: 'e-4', userId: 'u-4', userName: 'Robert Brown', joinedAt: Date.now() - 100000, status: QueueStatus.WAITING, estimatedMinutes: 5 },
         ]
+      },
+      {
+        id: 'q-r-3-slots',
+        name: 'Vaccination Drive',
+        isActive: true,
+        entries: [],
+        slotConfig: {
+          isEnabled: true,
+          duration: 15,
+          maxCapacity: 3
+        }
       }
     ]
   },

@@ -5,7 +5,7 @@ import {
   Plus, Store, Users, Play, CheckCircle2, QrCode, MapPin, X, 
   Download, UserX, Pause, Square, Clock, Phone, Map as MapIcon,
   TrendingUp, BarChart3, Timer, Zap, Calendar, ArrowUpRight, ChevronDown,
-  Sparkles, BadgeCheck, CalendarCheck, Target
+  Sparkles, BadgeCheck, CalendarCheck, Target, Edit3, Settings
 } from 'lucide-react';
 import QRCode from 'qrcode';
 
@@ -22,20 +22,24 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
   const [viewMode, setViewMode] = useState<'queues' | 'insights'>(initialView);
   const [timeframe, setTimeframe] = useState<Timeframe>('daily');
   const [showAddShop, setShowAddShop] = useState(false);
+  const [editingShop, setEditingShop] = useState<Shop | null>(null);
   const [showAddQueue, setShowAddQueue] = useState<string | null>(null);
+  const [editingQueue, setEditingQueue] = useState<{ shopId: string, queue: Queue } | null>(null);
   const [showQrModal, setShowQrModal] = useState<Shop | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isGeneratingPoster, setIsGeneratingPoster] = useState(false);
-  const [newShopData, setNewShopData] = useState({
-    name: '', address: '', landmark: '', mapUrl: '', phone: '',
-    category: 'Retail', openingTime: '09:00', closingTime: '21:00',
-    lunchStart: '13:00', lunchEnd: '14:00'
+  
+  const [shopFormData, setShopFormData] = useState({
+    name: '', address: '', category: '', phone: '',
+    openingTime: '09:00', closingTime: '21:00'
   });
   
-  const [newQueueName, setNewQueueName] = useState('');
-  const [isSlotBooking, setIsSlotBooking] = useState(false);
-  const [slotDuration, setSlotDuration] = useState(30);
-  const [slotCapacity, setSlotCapacity] = useState(1);
+  const [queueFormData, setQueueFormData] = useState({
+    name: '',
+    isSlotBooking: false,
+    slotDuration: 30,
+    slotCapacity: 1
+  });
   
   const vendorShops = useMemo(() => shops.filter(s => s.vendorId === user.id), [shops, user.id]);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
@@ -121,14 +125,12 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Header Gradient
       const grad = ctx.createLinearGradient(0, 0, 0, 450);
       grad.addColorStop(0, '#4f46e5');
       grad.addColorStop(1, '#6366f1');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, canvas.width, 450);
 
-      // App Brand
       ctx.fillStyle = '#ffffff';
       ctx.font = '900 80px Inter, sans-serif';
       ctx.textAlign = 'center';
@@ -137,20 +139,18 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       ctx.font = '600 36px Inter, sans-serif';
       ctx.fillText('SCAN TO JOIN THE DIGITAL LINE', canvas.width / 2, 290);
 
-      // Shop Information - Prominent Section
       ctx.textAlign = 'center';
       ctx.fillStyle = '#111827';
-      ctx.font = '900 85px Inter, sans-serif'; // Larger shop name
+      ctx.font = '900 85px Inter, sans-serif';
       ctx.fillText(showQrModal.name.toUpperCase(), canvas.width / 2, 1420);
 
       ctx.fillStyle = '#4b5563';
-      ctx.font = '600 45px Inter, sans-serif'; // Clear address
+      ctx.font = '600 45px Inter, sans-serif';
       const addressLines = showQrModal.address.match(/.{1,40}(\s|$)/g) || [showQrModal.address];
       addressLines.forEach((line, i) => {
         ctx.fillText(line.trim(), canvas.width / 2, 1510 + (i * 65));
       });
 
-      // QR Code Background / Container
       const qrSize = 850;
       const qrX = (canvas.width - qrSize) / 2;
       const qrY = 480;
@@ -174,7 +174,6 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
 
       ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
 
-      // Footer
       ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, canvas.height - 150, canvas.width, 150);
       ctx.fillStyle = '#94a3b8';
@@ -192,37 +191,81 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
     }
   };
 
-  const handleAddShop = (e: React.FormEvent) => {
+  const handleSaveShop = (e: React.FormEvent) => {
     e.preventDefault();
-    const shop: Shop = {
-      id: 'shop-' + Math.random().toString(36).substr(2, 9),
-      vendorId: user.id,
-      ...newShopData,
-      isVerified: false,
-      queues: []
-    };
-    setShops([...shops, shop]);
-    setShowAddShop(false);
-    setSelectedShopId(shop.id);
+    if (editingShop) {
+      setShops(shops.map(s => s.id === editingShop.id ? { ...s, ...shopFormData } : s));
+      setEditingShop(null);
+    } else {
+      const shop: Shop = {
+        id: 'shop-' + Math.random().toString(36).substr(2, 9),
+        vendorId: user.id,
+        ...shopFormData,
+        isVerified: false,
+        queues: []
+      };
+      setShops([...shops, shop]);
+      setShowAddShop(false);
+      setSelectedShopId(shop.id);
+    }
+    setShopFormData({ name: '', address: '', category: '', phone: '', openingTime: '09:00', closingTime: '21:00' });
   };
 
-  const handleAddQueue = (shopId: string) => {
-    if (!newQueueName) return;
-    const newQueue: Queue = {
-      id: 'q-' + Math.random().toString(36).substr(2, 9),
-      name: newQueueName,
-      isActive: true,
-      entries: [],
-      slotConfig: isSlotBooking ? {
-        isEnabled: true,
-        duration: slotDuration,
-        maxCapacity: slotCapacity
-      } : undefined
-    };
-    setShops(shops.map(s => s.id === shopId ? { ...s, queues: [...s.queues, newQueue] } : s));
-    setNewQueueName('');
-    setIsSlotBooking(false);
-    setShowAddQueue(null);
+  const startEditingShop = (shop: Shop) => {
+    setShopFormData({
+      name: shop.name,
+      address: shop.address,
+      category: shop.category,
+      phone: shop.phone,
+      openingTime: shop.openingTime || '09:00',
+      closingTime: shop.closingTime || '21:00'
+    });
+    setEditingShop(shop);
+  };
+
+  const handleSaveQueue = (shopId: string) => {
+    if (!queueFormData.name) return;
+    
+    if (editingQueue) {
+      setShops(shops.map(s => s.id === shopId ? {
+        ...s,
+        queues: s.queues.map(q => q.id === editingQueue.queue.id ? {
+          ...q,
+          name: queueFormData.name,
+          slotConfig: queueFormData.isSlotBooking ? {
+            isEnabled: true,
+            duration: queueFormData.slotDuration,
+            maxCapacity: queueFormData.slotCapacity
+          } : undefined
+        } : q)
+      } : s));
+      setEditingQueue(null);
+    } else {
+      const newQueue: Queue = {
+        id: 'q-' + Math.random().toString(36).substr(2, 9),
+        name: queueFormData.name,
+        isActive: true,
+        entries: [],
+        slotConfig: queueFormData.isSlotBooking ? {
+          isEnabled: true,
+          duration: queueFormData.slotDuration,
+          maxCapacity: queueFormData.slotCapacity
+        } : undefined
+      };
+      setShops(shops.map(s => s.id === shopId ? { ...s, queues: [...s.queues, newQueue] } : s));
+      setShowAddQueue(null);
+    }
+    setQueueFormData({ name: '', isSlotBooking: false, slotDuration: 30, slotCapacity: 1 });
+  };
+
+  const startEditingQueue = (shopId: string, queue: Queue) => {
+    setQueueFormData({
+      name: queue.name,
+      isSlotBooking: queue.slotConfig?.isEnabled || false,
+      slotDuration: queue.slotConfig?.duration || 30,
+      slotCapacity: queue.slotConfig?.maxCapacity || 1
+    });
+    setEditingQueue({ shopId, queue });
   };
 
   const updateEntryStatus = (queueId: string, entryId: string, status: QueueStatus) => {
@@ -249,7 +292,10 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">{viewMode === 'insights' ? 'Business Insights' : 'Operations'}</h2>
         <button
-          onClick={() => setShowAddShop(true)}
+          onClick={() => {
+            setShopFormData({ name: '', address: '', category: '', phone: '', openingTime: '09:00', closingTime: '21:00' });
+            setShowAddShop(true);
+          }}
           className="bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-colors"
         >
           <Plus className="w-6 h-6" />
@@ -289,9 +335,16 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
           {currentShop && viewMode === 'queues' && (
             <div className="space-y-4">
               <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100 flex justify-between items-center">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">{currentShop.name}</h3>
-                  <p className="text-sm text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" /> {currentShop.address}</p>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold text-gray-900">{currentShop.name}</h3>
+                      <button onClick={() => startEditingShop(currentShop)} className="p-1 text-slate-400 hover:text-indigo-600">
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-400 flex items-center gap-1"><MapPin className="w-3 h-3" /> {currentShop.address}</p>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setShowQrModal(currentShop)}
@@ -303,7 +356,13 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
 
               <div className="flex justify-between items-center px-2">
                 <h4 className="font-bold text-gray-700">Service Lines</h4>
-                <button onClick={() => setShowAddQueue(currentShop.id)} className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1">
+                <button 
+                  onClick={() => {
+                    setQueueFormData({ name: '', isSlotBooking: false, slotDuration: 30, slotCapacity: 1 });
+                    setShowAddQueue(currentShop.id);
+                  }}
+                  className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1"
+                >
                   <Plus className="w-4 h-4" /> Add Line
                 </button>
               </div>
@@ -316,7 +375,12 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                         <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
                            {q.slotConfig?.isEnabled ? <CalendarCheck className="w-5 h-5" /> : <Users className="w-5 h-5" />}
                         </div>
-                        <h5 className="font-bold text-gray-900">{q.name}</h5>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-bold text-gray-900">{q.name}</h5>
+                          <button onClick={() => startEditingQueue(currentShop.id, q)} className="p-1 text-slate-400 hover:text-indigo-600">
+                            <Settings className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <span className="bg-emerald-100 text-emerald-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest">
                         {q.entries.filter(e => !isTerminalStatus(e.status)).length} Live
@@ -468,17 +532,24 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         </>
       )}
 
-      {showAddShop && (
+      {(showAddShop || editingShop) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl animate-in zoom-in duration-300">
-            <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">Setup New Shop</h3>
-            <form onSubmit={handleAddShop} className="space-y-5">
-              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Business Name" value={newShopData.name} onChange={e => setNewShopData({...newShopData, name: e.target.value})} />
-              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Category (e.g. Clinic, Bakery)" value={newShopData.category} onChange={e => setNewShopData({...newShopData, category: e.target.value})} />
-              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Full Business Address" value={newShopData.address} onChange={e => setNewShopData({...newShopData, address: e.target.value})} />
+            <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tight">{editingShop ? 'Edit Shop' : 'Setup New Shop'}</h3>
+            <form onSubmit={handleSaveShop} className="space-y-5">
+              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 text-black font-medium" placeholder="Business Name" value={shopFormData.name} onChange={e => setShopFormData({...shopFormData, name: e.target.value})} />
+              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 text-black font-medium" placeholder="Category (e.g. Clinic, Bakery)" value={shopFormData.category} onChange={e => setShopFormData({...shopFormData, category: e.target.value})} />
+              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 text-black font-medium" placeholder="Full Business Address" value={shopFormData.address} onChange={e => setShopFormData({...shopFormData, address: e.target.value})} />
+              <input required className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 text-black font-medium" placeholder="Phone Number" value={shopFormData.phone} onChange={e => setShopFormData({...shopFormData, phone: e.target.value})} />
+              <div className="grid grid-cols-2 gap-4">
+                <input required type="time" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-black font-medium" value={shopFormData.openingTime} onChange={e => setShopFormData({...shopFormData, openingTime: e.target.value})} />
+                <input required type="time" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-black font-medium" value={shopFormData.closingTime} onChange={e => setShopFormData({...shopFormData, closingTime: e.target.value})} />
+              </div>
               <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setShowAddShop(false)} className="flex-1 text-slate-400 font-bold">Cancel</button>
-                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-100">Create Shop</button>
+                <button type="button" onClick={() => { setShowAddShop(false); setEditingShop(null); }} className="flex-1 text-slate-400 font-bold">Cancel</button>
+                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-indigo-100">
+                  {editingShop ? 'Update Details' : 'Create Shop'}
+                </button>
               </div>
             </form>
           </div>
@@ -511,14 +582,14 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         </div>
       )}
 
-      {showAddQueue && (
+      {(showAddQueue || editingQueue) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-300">
-            <h3 className="text-xl font-black text-slate-900 mb-8 uppercase tracking-tight">New Service Line</h3>
+            <h3 className="text-xl font-black text-slate-900 mb-8 uppercase tracking-tight">{editingQueue ? 'Edit Line' : 'New Service Line'}</h3>
             <div className="space-y-5">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Line Name</label>
-                <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" placeholder="e.g. Walk-in Customers" value={newQueueName} onChange={e => setNewQueueName(e.target.value)} />
+                <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-black" placeholder="e.g. Walk-in Customers" value={queueFormData.name} onChange={e => setQueueFormData({...queueFormData, name: e.target.value})} />
               </div>
               
               <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -526,27 +597,29 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                   <span className="text-xs font-black uppercase tracking-widest text-slate-700">Slot Booking</span>
                   <span className="text-[9px] font-bold text-slate-400">Scheduled appointments</span>
                 </div>
-                <button onClick={() => setIsSlotBooking(!isSlotBooking)} className={`w-12 h-6 rounded-full transition-all relative ${isSlotBooking ? 'bg-indigo-600' : 'bg-slate-300'}`}>
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isSlotBooking ? 'left-7' : 'left-1'}`}></div>
+                <button onClick={() => setQueueFormData({...queueFormData, isSlotBooking: !queueFormData.isSlotBooking})} className={`w-12 h-6 rounded-full transition-all relative ${queueFormData.isSlotBooking ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${queueFormData.isSlotBooking ? 'left-7' : 'left-1'}`}></div>
                 </button>
               </div>
 
-              {isSlotBooking && (
+              {queueFormData.isSlotBooking && (
                 <div className="grid grid-cols-2 gap-4 animate-in fade-in">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mins / Slot</label>
-                    <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" value={slotDuration} onChange={e => setSlotDuration(parseInt(e.target.value) || 15)} />
+                    <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-black" value={queueFormData.slotDuration} onChange={e => setQueueFormData({...queueFormData, slotDuration: parseInt(e.target.value) || 15})} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cap / Slot</label>
-                    <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold" value={slotCapacity} onChange={e => setSlotCapacity(parseInt(e.target.value) || 1)} />
+                    <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-black" value={queueFormData.slotCapacity} onChange={e => setQueueFormData({...queueFormData, slotCapacity: parseInt(e.target.value) || 1})} />
                   </div>
                 </div>
               )}
               
               <div className="flex gap-4 pt-4">
-                <button onClick={() => setShowAddQueue(null)} className="flex-1 text-slate-400 font-bold">Back</button>
-                <button onClick={() => handleAddQueue(showAddQueue)} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">Create</button>
+                <button onClick={() => { setShowAddQueue(null); setEditingQueue(null); }} className="flex-1 text-slate-400 font-bold">Back</button>
+                <button onClick={() => handleSaveQueue(showAddQueue || editingQueue?.shopId || '')} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">
+                  {editingQueue ? 'Update' : 'Create'}
+                </button>
               </div>
             </div>
           </div>
