@@ -63,8 +63,11 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   }, []);
 
   const categories = useMemo(() => {
-    const cats = new Set(shops.map(s => s.category));
-    return ['All', ...Array.from(cats)];
+    const categoriesSet = new Set<string>();
+    shops.forEach(s => {
+       if (s.category) categoriesSet.add(s.category);
+    });
+    return ['All', ...Array.from(categoriesSet)];
   }, [shops]);
 
   useEffect(() => {
@@ -162,27 +165,63 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
 
   const getAvailableSlots = (shop: Shop, queue: Queue) => {
     if (!queue.slotConfig?.isEnabled) return [];
-    const slots = [];
+    
     const duration = queue.slotConfig.duration;
     const capacity = queue.slotConfig.maxCapacity;
-    const [openH, openM] = (shop.openingTime || "09:00").split(':').map(Number);
-    const [closeH, closeM] = (shop.closingTime || "18:00").split(':').map(Number);
+
+    // Use queue schedule if available, else fallback to shop schedule
+    const startStr = queue.schedule?.startTime || shop.openingTime || "09:00";
+    const endStr = queue.schedule?.endTime || shop.closingTime || "18:00";
+    
+    const [openH, openM] = startStr.split(':').map(Number);
+    const [closeH, closeM] = endStr.split(':').map(Number);
+    
     const now = new Date();
     const startTime = new Date(now);
     startTime.setHours(openH, openM, 0, 0);
+    
     const endTime = new Date(now);
     endTime.setHours(closeH, closeM, 0, 0);
+
+    // Prepare breaks logic
+    const breaks = (queue.schedule?.breaks || []).map(b => {
+      const [sh, sm] = b.start.split(':').map(Number);
+      const [eh, em] = b.end.split(':').map(Number);
+      const start = new Date(now);
+      start.setHours(sh, sm, 0, 0);
+      const end = new Date(now);
+      end.setHours(eh, em, 0, 0);
+      return { start: start.getTime(), end: end.getTime() };
+    });
+    
+    const slots = [];
     let current = startTime;
+    
     while (current < endTime) {
-      const slotTimestamp = current.getTime();
-      const bookedCount = queue.entries.filter(e => e.bookedSlotStart === slotTimestamp && !isTerminalStatus(e.status)).length;
-      const isPast = slotTimestamp < now.getTime();
-      slots.push({
-        time: slotTimestamp,
-        isFull: bookedCount >= capacity,
-        isPast,
-        label: current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const slotStart = current.getTime();
+      const slotEnd = slotStart + duration * 60000;
+      
+      // Check if slot overlaps with any break
+      // We consider a slot overlapping if it starts within a break OR ends within a break
+      // Or if the break is entirely inside the slot (though slot is usually smaller)
+      const isBreak = breaks.some(b => {
+        return (slotStart >= b.start && slotStart < b.end) || 
+               (slotEnd > b.start && slotEnd <= b.end) ||
+               (slotStart <= b.start && slotEnd >= b.end);
       });
+
+      if (!isBreak) {
+        const bookedCount = queue.entries.filter(e => e.bookedSlotStart === slotStart && !isTerminalStatus(e.status)).length;
+        const isPast = slotStart < now.getTime();
+        
+        slots.push({
+          time: slotStart,
+          isFull: bookedCount >= capacity,
+          isPast,
+          label: current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+      }
+      
       current = new Date(current.getTime() + duration * 60000);
     }
     return slots;

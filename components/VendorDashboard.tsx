@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, Shop, Queue, QueueStatus, QueueEntry, SlotConfig } from '../types';
+import { User, Shop, Queue, QueueStatus, QueueEntry, SlotConfig, TimeRange } from '../types';
 import { 
   Plus, Store, Users, Play, CheckCircle2, QrCode, MapPin, X, 
   Download, UserX, Pause, Square, Clock, Phone, Map as MapIcon,
   TrendingUp, BarChart3, Timer, Zap, Calendar, ArrowUpRight, ChevronDown,
-  Sparkles, BadgeCheck, CalendarCheck, Target, Edit3, Settings
+  Sparkles, BadgeCheck, CalendarCheck, Target, Edit3, Settings, Trash2, Coffee
 } from 'lucide-react';
 import QRCode from 'qrcode';
 
@@ -38,7 +38,10 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
     name: '',
     isSlotBooking: false,
     slotDuration: 30,
-    slotCapacity: 1
+    slotCapacity: 1,
+    startTime: '09:00',
+    endTime: '17:00',
+    breaks: [] as TimeRange[]
   });
   
   const vendorShops = useMemo(() => shops.filter(s => s.vendorId === user.id), [shops, user.id]);
@@ -226,17 +229,26 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
   const handleSaveQueue = (shopId: string) => {
     if (!queueFormData.name) return;
     
+    const schedule = {
+      startTime: queueFormData.startTime,
+      endTime: queueFormData.endTime,
+      breaks: queueFormData.breaks
+    };
+
+    const slotConfig = queueFormData.isSlotBooking ? {
+      isEnabled: true,
+      duration: queueFormData.slotDuration,
+      maxCapacity: queueFormData.slotCapacity
+    } : undefined;
+
     if (editingQueue) {
       setShops(shops.map(s => s.id === shopId ? {
         ...s,
         queues: s.queues.map(q => q.id === editingQueue.queue.id ? {
           ...q,
           name: queueFormData.name,
-          slotConfig: queueFormData.isSlotBooking ? {
-            isEnabled: true,
-            duration: queueFormData.slotDuration,
-            maxCapacity: queueFormData.slotCapacity
-          } : undefined
+          slotConfig,
+          schedule
         } : q)
       } : s));
       setEditingQueue(null);
@@ -246,26 +258,56 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         name: queueFormData.name,
         isActive: true,
         entries: [],
-        slotConfig: queueFormData.isSlotBooking ? {
-          isEnabled: true,
-          duration: queueFormData.slotDuration,
-          maxCapacity: queueFormData.slotCapacity
-        } : undefined
+        slotConfig,
+        schedule
       };
       setShops(shops.map(s => s.id === shopId ? { ...s, queues: [...s.queues, newQueue] } : s));
       setShowAddQueue(null);
     }
-    setQueueFormData({ name: '', isSlotBooking: false, slotDuration: 30, slotCapacity: 1 });
+    // Reset form
+    setQueueFormData({ 
+      name: '', 
+      isSlotBooking: false, 
+      slotDuration: 30, 
+      slotCapacity: 1,
+      startTime: '09:00', 
+      endTime: '17:00', 
+      breaks: [] 
+    });
   };
 
   const startEditingQueue = (shopId: string, queue: Queue) => {
+    // Determine default start/end from shop if queue specific not set
+    const shop = shops.find(s => s.id === shopId);
+    
     setQueueFormData({
       name: queue.name,
       isSlotBooking: queue.slotConfig?.isEnabled || false,
       slotDuration: queue.slotConfig?.duration || 30,
-      slotCapacity: queue.slotConfig?.maxCapacity || 1
+      slotCapacity: queue.slotConfig?.maxCapacity || 1,
+      startTime: queue.schedule?.startTime || shop?.openingTime || '09:00',
+      endTime: queue.schedule?.endTime || shop?.closingTime || '17:00',
+      breaks: queue.schedule?.breaks || []
     });
     setEditingQueue({ shopId, queue });
+  };
+
+  const handleAddBreak = () => {
+    setQueueFormData({
+      ...queueFormData,
+      breaks: [...queueFormData.breaks, { name: '', start: '12:00', end: '13:00' }]
+    });
+  };
+
+  const updateBreak = (index: number, field: keyof TimeRange, value: string) => {
+    const newBreaks = [...queueFormData.breaks];
+    newBreaks[index] = { ...newBreaks[index], [field]: value };
+    setQueueFormData({ ...queueFormData, breaks: newBreaks });
+  };
+
+  const removeBreak = (index: number) => {
+    const newBreaks = queueFormData.breaks.filter((_, i) => i !== index);
+    setQueueFormData({ ...queueFormData, breaks: newBreaks });
   };
 
   const updateEntryStatus = (queueId: string, entryId: string, status: QueueStatus) => {
@@ -285,6 +327,20 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
 
   const isTerminalStatus = (status: QueueStatus) => {
     return status === QueueStatus.COMPLETED || status === QueueStatus.CANCELLED || status === QueueStatus.NO_SHOW;
+  };
+
+  const initQueueForm = (shopId: string) => {
+     const shop = shops.find(s => s.id === shopId);
+     setQueueFormData({ 
+      name: '', 
+      isSlotBooking: false, 
+      slotDuration: 30, 
+      slotCapacity: 1,
+      startTime: shop?.openingTime || '09:00',
+      endTime: shop?.closingTime || '17:00',
+      breaks: []
+    });
+    setShowAddQueue(shopId);
   };
 
   return (
@@ -357,10 +413,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
               <div className="flex justify-between items-center px-2">
                 <h4 className="font-bold text-gray-700">Service Lines</h4>
                 <button 
-                  onClick={() => {
-                    setQueueFormData({ name: '', isSlotBooking: false, slotDuration: 30, slotCapacity: 1 });
-                    setShowAddQueue(currentShop.id);
-                  }}
+                  onClick={() => initQueueForm(currentShop.id)}
                   className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1"
                 >
                   <Plus className="w-4 h-4" /> Add Line
@@ -583,10 +636,10 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       )}
 
       {(showAddQueue || editingQueue) && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-300">
-            <h3 className="text-xl font-black text-slate-900 mb-8 uppercase tracking-tight">{editingQueue ? 'Edit Line' : 'New Service Line'}</h3>
-            <div className="space-y-5">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-300 my-8">
+            <h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">{editingQueue ? 'Edit Line' : 'New Service Line'}</h3>
+            <div className="space-y-6">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Line Name</label>
                 <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-black" placeholder="e.g. Walk-in Customers" value={queueFormData.name} onChange={e => setQueueFormData({...queueFormData, name: e.target.value})} />
@@ -614,11 +667,71 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                   </div>
                 </div>
               )}
+
+              <div className="border-t border-slate-100 pt-6">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-indigo-500" /> Working Hours
+                </h4>
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">Start Time</label>
+                    <input type="time" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm" value={queueFormData.startTime} onChange={e => setQueueFormData({...queueFormData, startTime: e.target.value})} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase">End Time</label>
+                    <input type="time" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm" value={queueFormData.endTime} onChange={e => setQueueFormData({...queueFormData, endTime: e.target.value})} />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                    <Coffee className="w-3 h-3 text-amber-500" /> Breaks
+                  </h4>
+                  <button onClick={handleAddBreak} className="text-[10px] bg-slate-100 hover:bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg font-bold uppercase transition-colors">
+                    + Add Break
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {queueFormData.breaks.length === 0 ? (
+                    <div className="text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                      <p className="text-[10px] text-slate-400">No breaks configured</p>
+                    </div>
+                  ) : (
+                    queueFormData.breaks.map((brk, idx) => (
+                      <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-2 animate-in slide-in-from-left-2">
+                        <input 
+                          className="flex-1 bg-white border-0 rounded-lg text-xs font-bold p-2 w-full" 
+                          placeholder="Name (e.g. Lunch)" 
+                          value={brk.name} 
+                          onChange={(e) => updateBreak(idx, 'name', e.target.value)}
+                        />
+                        <input 
+                          type="time" 
+                          className="bg-white border-0 rounded-lg text-xs font-bold p-2 w-20" 
+                          value={brk.start} 
+                          onChange={(e) => updateBreak(idx, 'start', e.target.value)}
+                        />
+                        <span className="text-slate-300">-</span>
+                        <input 
+                          type="time" 
+                          className="bg-white border-0 rounded-lg text-xs font-bold p-2 w-20" 
+                          value={brk.end} 
+                          onChange={(e) => updateBreak(idx, 'end', e.target.value)}
+                        />
+                        <button onClick={() => removeBreak(idx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
               
-              <div className="flex gap-4 pt-4">
-                <button onClick={() => { setShowAddQueue(null); setEditingQueue(null); }} className="flex-1 text-slate-400 font-bold">Back</button>
-                <button onClick={() => handleSaveQueue(showAddQueue || editingQueue?.shopId || '')} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl">
-                  {editingQueue ? 'Update' : 'Create'}
+              <div className="flex gap-4 pt-6 border-t border-slate-100">
+                <button onClick={() => { setShowAddQueue(null); setEditingQueue(null); }} className="flex-1 text-slate-400 font-bold">Cancel</button>
+                <button onClick={() => handleSaveQueue(showAddQueue || editingQueue?.shopId || '')} className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-indigo-700 transition-colors">
+                  {editingQueue ? 'Save Changes' : 'Create Line'}
                 </button>
               </div>
             </div>

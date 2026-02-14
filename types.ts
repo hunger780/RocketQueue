@@ -19,6 +19,18 @@ export interface SlotConfig {
   maxCapacity: number;
 }
 
+export interface TimeRange {
+  start: string; // "HH:mm"
+  end: string;   // "HH:mm"
+  name?: string;
+}
+
+export interface QueueSchedule {
+  startTime: string; // "09:00"
+  endTime: string;   // "17:00"
+  breaks: TimeRange[];
+}
+
 export interface Shop {
   id: string;
   vendorId: string;
@@ -42,6 +54,7 @@ export interface Queue {
   isActive: boolean;
   entries: QueueEntry[];
   slotConfig?: SlotConfig;
+  schedule?: QueueSchedule;
 }
 
 export enum QueueStatus {
