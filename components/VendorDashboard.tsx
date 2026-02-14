@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, Shop, Queue, QueueStatus, QueueEntry } from '../types';
+import { User, Shop, Queue, QueueStatus, QueueEntry, SlotConfig } from '../types';
 import { 
   Plus, Store, Users, Play, CheckCircle2, QrCode, MapPin, X, 
   Download, UserX, Pause, Square, Clock, Phone, Map as MapIcon,
   TrendingUp, BarChart3, Timer, Zap, Calendar, ArrowUpRight, ChevronDown,
-  Sparkles, BadgeCheck
+  Sparkles, BadgeCheck, CalendarCheck
 } from 'lucide-react';
 import QRCode from 'qrcode';
 
@@ -31,7 +31,12 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
     category: 'Retail', openingTime: '09:00', closingTime: '21:00',
     lunchStart: '13:00', lunchEnd: '14:00'
   });
+  
+  // States for new queue
   const [newQueueName, setNewQueueName] = useState('');
+  const [isSlotBooking, setIsSlotBooking] = useState(false);
+  const [slotDuration, setSlotDuration] = useState(30);
+  const [slotCapacity, setSlotCapacity] = useState(1);
   
   const vendorShops = useMemo(() => shops.filter(s => s.vendorId === user.id), [shops, user.id]);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
@@ -220,10 +225,16 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       id: 'q-' + Math.random().toString(36).substr(2, 9),
       name: newQueueName,
       isActive: true,
-      entries: []
+      entries: [],
+      slotConfig: isSlotBooking ? {
+        isEnabled: true,
+        duration: slotDuration,
+        maxCapacity: slotCapacity
+      } : undefined
     };
     setShops(shops.map(s => s.id === shopId ? { ...s, queues: [...s.queues, newQueue] } : s));
     setNewQueueName('');
+    setIsSlotBooking(false);
     setShowAddQueue(null);
   };
 
@@ -302,15 +313,6 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                       <h3 className="text-xl font-bold text-gray-900">{currentShop.name}</h3>
                       {currentShop.isVerified && <BadgeCheck className="w-5 h-5 text-indigo-600" />}
                     </div>
-                    {currentShop.isVerified ? (
-                      <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                        <BadgeCheck className="w-3 h-3" /> Verified Account
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        Verification Pending
-                      </div>
-                    )}
                     <p className="text-sm text-gray-500 flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-indigo-500" /> {currentShop.address}
                     </p>
@@ -340,11 +342,16 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                 {currentShop.queues.map(q => (
                   <div key={q.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
                     <div className="flex justify-between items-center mb-5">
-                      <h5 className="font-bold text-gray-900 flex items-center gap-2">
-                        <Store className="w-5 h-5 text-indigo-500" /> {q.name}
-                      </h5>
+                      <div className="flex items-center gap-2">
+                         <h5 className="font-bold text-gray-900 flex items-center gap-2">
+                          {q.slotConfig?.isEnabled ? <CalendarCheck className="w-5 h-5 text-indigo-500" /> : <Store className="w-5 h-5 text-indigo-500" />} {q.name}
+                        </h5>
+                        {q.slotConfig?.isEnabled && (
+                           <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-black uppercase tracking-widest border border-indigo-100">Booking On</span>
+                        )}
+                      </div>
                       <span className="bg-green-100 text-green-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest">
-                        {q.entries.filter(e => e.status === QueueStatus.WAITING).length} Waiting
+                        {q.entries.filter(e => e.status === QueueStatus.WAITING).length} Active
                       </span>
                     </div>
 
@@ -356,6 +363,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                       ) : (
                         q.entries
                           .filter(e => !isTerminalStatus(e.status))
+                          .sort((a, b) => (a.bookedSlotStart || a.joinedAt) - (b.bookedSlotStart || b.joinedAt))
                           .map((e, idx) => (
                             <div key={e.id} className="flex flex-col p-4 bg-gray-50 rounded-2xl space-y-4 border border-gray-100">
                               <div className="flex items-center justify-between">
@@ -363,7 +371,13 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                                   <span className="text-black font-black text-2xl opacity-20">#{idx + 1}</span>
                                   <div>
                                     <p className="text-base font-bold text-black">{e.userName}</p>
-                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Joined {new Date(e.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    {e.bookedSlotStart ? (
+                                      <p className="text-[10px] text-indigo-600 uppercase font-black tracking-widest flex items-center gap-1">
+                                        <Clock className="w-3 h-3" /> Booked: {new Date(e.bookedSlotStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                    ) : (
+                                      <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Joined {new Date(e.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    )}
                                   </div>
                                 </div>
                                 {e.status !== QueueStatus.WAITING && (
@@ -442,41 +456,6 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-center mb-8">
-                  <h4 className="text-lg font-black text-black">Traffic Analysis</h4>
-                  <div className="text-[10px] text-indigo-600 font-black uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Peak: {analytics.peakTime}</div>
-                </div>
-                
-                <div className="relative h-56 w-full">
-                  <svg className="w-full h-full overflow-visible" viewBox="0 0 400 100" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.2" />
-                        <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path 
-                      d={`M ${analytics.hourlyData.map((val, i) => `${(i * 400) / (analytics.hourlyData.length - 1)},${100 - (val / Math.max(...analytics.hourlyData) * 90)}`).join(' L ')}`} 
-                      fill="none" 
-                      stroke="#4f46e5" 
-                      strokeWidth="3" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                    />
-                    <path 
-                      d={`M 0,100 L ${analytics.hourlyData.map((val, i) => `${(i * 400) / (analytics.hourlyData.length - 1)},${100 - (val / Math.max(...analytics.hourlyData) * 90)}`).join(' L ')} L 400,100 Z`} 
-                      fill="url(#chartGradient)" 
-                    />
-                  </svg>
-                  <div className="flex justify-between mt-6 px-1">
-                    {analytics.labels.map(label => (
-                      <span key={label} className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{label}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </>
@@ -515,7 +494,52 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-[2rem] p-8 shadow-2xl animate-in zoom-in duration-300">
             <h3 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-tight">Create Service Line</h3>
-            <input className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-bold focus:ring-2 focus:ring-indigo-500 outline-none mb-6" placeholder="e.g. Premium VIP, Express" value={newQueueName} onChange={e => setNewQueueName(e.target.value)} />
+            
+            <div className="space-y-4 mb-8">
+              <input 
+                className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-bold focus:ring-2 focus:ring-indigo-500 outline-none" 
+                placeholder="e.g. Premium VIP, Express" 
+                value={newQueueName} 
+                onChange={e => setNewQueueName(e.target.value)} 
+              />
+              
+              <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="flex flex-col">
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-700">Slot Booking</span>
+                  <span className="text-[9px] font-bold text-slate-400">Enable appointment slots</span>
+                </div>
+                <button 
+                  onClick={() => setIsSlotBooking(!isSlotBooking)}
+                  className={`w-12 h-6 rounded-full transition-all relative ${isSlotBooking ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                >
+                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${isSlotBooking ? 'left-7' : 'left-1'}`}></div>
+                </button>
+              </div>
+
+              {isSlotBooking && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-300">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Duration (Min)</label>
+                    <input 
+                      type="number"
+                      className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-bold"
+                      value={slotDuration}
+                      onChange={e => setSlotDuration(parseInt(e.target.value) || 15)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cap / Slot</label>
+                    <input 
+                      type="number"
+                      className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-bold"
+                      value={slotCapacity}
+                      onChange={e => setSlotCapacity(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-4">
               <button onClick={() => setShowAddQueue(null)} className="flex-1 text-slate-500 font-black uppercase tracking-widest text-xs">Back</button>
               <button onClick={() => handleAddQueue(showAddQueue)} className="flex-1 py-4 bg-indigo-600 text-white rounded-[1rem] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Add Line</button>
@@ -552,7 +576,6 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                 <><Download className="w-5 h-5" /> Save QR Poster</>
               )}
             </button>
-            <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Hi-Res Poster with Branding</p>
           </div>
         </div>
       )}
