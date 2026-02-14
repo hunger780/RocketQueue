@@ -10,7 +10,8 @@ import {
   ArrowRight, 
   CheckCircle2, 
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus
 } from 'lucide-react';
 
 interface LoginProps {
@@ -18,7 +19,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(true); // Default to Sign In
   const [role, setRole] = useState<UserRole>(UserRole.CUSTOMER);
   const [formData, setFormData] = useState({
     name: '',
@@ -52,7 +53,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
     const timer = setTimeout(initializeGoogleSignIn, 1000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isLoginMode]);
 
   const parseJwt = (token: string) => {
     try {
@@ -97,7 +98,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       const newUser: User = {
         id: isMockUser ? 'vendor-r-mock' : Math.random().toString(36).substr(2, 9),
         ...formData,
-        name: isMockUser && !formData.name ? 'Premium Vendor' : formData.name,
+        name: isMockUser && !formData.name ? 'Premium Vendor' : (formData.name || 'User'),
         age: parseInt(formData.age) || undefined,
         role
       };
@@ -124,7 +125,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             Rocket <span className="text-indigo-600">Queue</span>
           </h1>
           <p className="text-slate-500 font-medium">
-            The intelligent way to wait. 
+            An intelligent way to wait.
           </p>
         </div>
 
@@ -153,12 +154,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           <div className="px-8 pb-10">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-slate-800">
-                {isLoginMode ? 'Welcome Back' : 'Create Account'}
+                {isLoginMode ? 'Sign In' : 'Create Account'}
               </h2>
               <p className="text-slate-400 text-sm mt-1">
-                {isVendor 
-                  ? 'Manage your business queues with smart insights'
-                  : 'Join queues from anywhere, track in real-time'}
+                {isLoginMode 
+                  ? 'Access your saved queues and history'
+                  : 'Join the network and manage your customers'}
               </p>
             </div>
 
@@ -174,7 +175,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       required={!isLoginMode}
                       type="text"
                       placeholder="e.g. Alex Johnson"
-                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400"
+                      className="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400 font-medium"
                       value={formData.name}
                       onChange={e => setFormData({...formData, name: e.target.value})}
                     />
@@ -192,7 +193,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     required
                     type="email"
                     placeholder="alex@company.com"
-                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400"
+                    className="w-full pl-12 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400 font-medium"
                     value={formData.email}
                     onChange={e => setFormData({...formData, email: e.target.value})}
                   />
@@ -211,7 +212,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                         required={!isLoginMode}
                         type="tel"
                         placeholder="Mobile"
-                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400"
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400 font-medium"
                         value={formData.phone}
                         onChange={e => setFormData({...formData, phone: e.target.value})}
                       />
@@ -226,7 +227,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <input
                         type="number"
                         placeholder="Age"
-                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400"
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-black placeholder:text-slate-400 font-medium"
                         value={formData.age}
                         onChange={e => setFormData({...formData, age: e.target.value})}
                       />
@@ -244,33 +245,47 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
                   <>
-                    {isLoginMode ? 'Sign In' : (isVendor ? 'Get Your QR Code' : 'Start Discovery')}
+                    {isLoginMode ? 'Sign In' : (isVendor ? 'Get Your QR Code' : 'Create Profile')}
                     <ArrowRight className="w-5 h-5" />
                   </>
                 )}
               </button>
             </form>
 
-            <div className="mt-6 flex items-center gap-4">
-              <div className="h-px flex-1 bg-slate-100"></div>
-              <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Or</span>
-              <div className="h-px flex-1 bg-slate-100"></div>
-            </div>
+            {isLoginMode && (
+              <>
+                <div className="mt-6 flex items-center gap-4">
+                  <div className="h-px flex-1 bg-slate-100"></div>
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest text-center">Or connect with</span>
+                  <div className="h-px flex-1 bg-slate-100"></div>
+                </div>
 
-            <div className="mt-6 space-y-4">
-              <div id="google-signin-btn" className="w-full flex justify-center"></div>
-            </div>
+                <div className="mt-6">
+                  <div id="google-signin-btn" className="w-full flex justify-center"></div>
+                </div>
+              </>
+            )}
 
-            <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center gap-4">
-              <button 
-                onClick={() => setIsLoginMode(!isLoginMode)}
-                className="text-slate-500 text-sm font-medium hover:text-indigo-600 transition-colors"
-              >
-                {isLoginMode ? "Don't have an account? " : "Already using Rocket Queue? "}
-                <span className="font-bold text-indigo-600 underline underline-offset-4 decoration-2">
-                  {isLoginMode ? 'Create Profile' : 'Sign In'}
-                </span>
-              </button>
+            <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col items-center gap-6">
+              {isLoginMode ? (
+                <div className="w-full space-y-4">
+                  <p className="text-center text-slate-400 text-sm font-medium">New to Rocket Queue?</p>
+                  <button 
+                    onClick={() => setIsLoginMode(false)}
+                    className="w-full py-4 bg-white border-2 border-indigo-600 text-indigo-600 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-50 active:scale-[0.98] transition-all"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    Create New Account
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setIsLoginMode(true)}
+                  className="text-slate-500 text-sm font-medium hover:text-indigo-600 transition-colors"
+                >
+                  Already have an account? <span className="font-bold text-indigo-600 underline underline-offset-4 decoration-2">Sign In</span>
+                </button>
+              )}
               
               <div className="flex items-center gap-6 text-slate-300">
                 <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-[0.1em]">
@@ -285,7 +300,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         <p className="text-center text-slate-400 text-[10px] mt-8 uppercase font-bold tracking-widest leading-relaxed">
-          Rocket Queue v2.0 &bull; Designed for small-to-medium scale shops
+          Rocket Queue v2.1 &bull; Digital Queue Management
         </p>
       </div>
     </div>

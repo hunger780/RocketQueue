@@ -61,7 +61,11 @@ const App: React.FC = () => {
           <CustomerView user={user} shops={shops} setShops={setShops} />
         );
       case 'dashboard':
-        return <VendorDashboard user={user} shops={shops} setShops={setShops} initialView="insights" />;
+        return user.role === UserRole.VENDOR ? (
+          <VendorDashboard user={user} shops={shops} setShops={setShops} initialView="insights" />
+        ) : (
+          <CustomerView user={user} shops={shops} setShops={setShops} initialView="insights" />
+        );
       case 'search':
         return <CustomerView user={user} shops={shops} setShops={setShops} forceDiscovery={true} />;
       case 'profile':
@@ -136,15 +140,13 @@ const App: React.FC = () => {
           <span className="text-[10px] font-bold">Home</span>
         </button>
 
-        {user.role === UserRole.VENDOR && (
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-gray-400'}`}
-          >
-            <BarChart3 className="w-6 h-6" />
-            <span className="text-[10px] font-bold">Dashboard</span>
-          </button>
-        )}
+        <button 
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'dashboard' ? 'text-indigo-600' : 'text-gray-400'}`}
+        >
+          <BarChart3 className="w-6 h-6" />
+          <span className="text-[10px] font-bold">Dashboard</span>
+        </button>
 
         {user.role === UserRole.CUSTOMER && (
           <button 

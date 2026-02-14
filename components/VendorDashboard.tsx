@@ -62,7 +62,8 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       totalServed: 0,
       avgServiceTime: 0,
       peakTime: "",
-      hourlyData: [] as number[],
+      trafficData: [] as number[],
+      growthData: [] as number[],
       labels: [] as string[]
     };
 
@@ -71,7 +72,8 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         totalServed: completed.length + 42,
         avgServiceTime: 18,
         peakTime: "2:00 PM",
-        hourlyData: [12, 19, 15, 8, 22, 30, 25, 18, 12, 14, 20, 10],
+        trafficData: [12, 19, 15, 8, 22, 30, 25, 18, 12, 14, 20, 10],
+        growthData: [5, 8, 12, 10, 15, 20, 18, 16, 22, 25, 20, 28],
         labels: ['9a', '11a', '1p', '3p', '5p', '7p', '9p']
       };
     } else if (timeframe === 'weekly') {
@@ -79,7 +81,8 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         totalServed: (completed.length + 42) * 7,
         avgServiceTime: 16,
         peakTime: "Saturday",
-        hourlyData: [150, 180, 210, 190, 250, 310, 280],
+        trafficData: [150, 180, 210, 190, 250, 310, 280],
+        growthData: [100, 120, 140, 130, 170, 210, 190],
         labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
       };
     } else {
@@ -87,7 +90,8 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         totalServed: (completed.length + 42) * 365,
         avgServiceTime: 15,
         peakTime: "December",
-        hourlyData: [1200, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 1900, 2400, 2800, 3200],
+        trafficData: [1200, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 1900, 2400, 2800, 3200],
+        growthData: [800, 900, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 2400, 2600, 3000],
         labels: ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov']
       };
     }
@@ -130,7 +134,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
       ctx.fillText('ROCKET QUEUE', canvas.width / 2, 200);
       
       ctx.font = '600 36px Inter, sans-serif';
-      ctx.fillText('SMART DIGITAL QUEUEING', canvas.width / 2, 260);
+      ctx.fillText('DIGITAL QUEUEING SOLUTION', canvas.width / 2, 260);
 
       ctx.textAlign = 'center';
       ctx.fillStyle = '#111827';
@@ -276,7 +280,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
           </div>
           <h3 className="text-xl font-black text-indigo-900 mb-2">No shops created</h3>
           <p className="text-indigo-600/70 font-medium max-w-[260px] leading-relaxed">
-            Click on the create shop button to add new shop and start managing your queues.
+            Create your first shop to start managing your digital queues.
           </p>
           <button 
             onClick={() => setShowAddShop(true)}
@@ -347,18 +351,18 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                           {q.slotConfig?.isEnabled ? <CalendarCheck className="w-5 h-5 text-indigo-500" /> : <Store className="w-5 h-5 text-indigo-500" />} {q.name}
                         </h5>
                         {q.slotConfig?.isEnabled && (
-                           <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-black uppercase tracking-widest border border-indigo-100">Booking On</span>
+                           <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-black uppercase tracking-widest border border-indigo-100">Booking Enabled</span>
                         )}
                       </div>
                       <span className="bg-green-100 text-green-700 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-widest">
-                        {q.entries.filter(e => e.status === QueueStatus.WAITING).length} Active
+                        {q.entries.filter(e => !isTerminalStatus(e.status)).length} Active
                       </span>
                     </div>
 
                     <div className="space-y-3">
                       {q.entries.filter(e => !isTerminalStatus(e.status)).length === 0 ? (
                         <div className="text-center py-8 border-2 border-dashed border-gray-50 rounded-2xl">
-                          <p className="text-sm text-gray-400 font-medium">No customers currently in line</p>
+                          <p className="text-sm text-gray-400 font-medium">Waiting for customers...</p>
                         </div>
                       ) : (
                         q.entries
@@ -391,11 +395,11 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                               
                               <div className="grid grid-cols-2 gap-2">
                                 {e.status !== QueueStatus.IN_PROGRESS ? (
-                                  <button onClick={() => updateEntryStatus(q.id, e.id, QueueStatus.IN_PROGRESS)} className="flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
+                                  <button onClick={() => updateEntryStatus(q.id, e.id, QueueStatus.IN_PROGRESS)} className="flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-700 transition-all shadow-md">
                                     <Play className="w-4 h-4" /> START
                                   </button>
                                 ) : (
-                                  <button onClick={() => updateEntryStatus(q.id, e.id, QueueStatus.COMPLETED)} className="flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-green-700 transition-all shadow-md shadow-green-100">
+                                  <button onClick={() => updateEntryStatus(q.id, e.id, QueueStatus.COMPLETED)} className="flex items-center justify-center gap-2 py-3 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-green-700 transition-all shadow-md">
                                     <Square className="w-4 h-4" /> STOP
                                   </button>
                                 )}
@@ -404,9 +408,6 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                                 </button>
                                 <button onClick={() => updateEntryStatus(q.id, e.id, QueueStatus.NO_SHOW)} className="flex items-center justify-center gap-2 py-3 bg-white text-slate-600 border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-50 transition-all">
                                   <UserX className="w-4 h-4" /> NO SHOW
-                                </button>
-                                <button onClick={() => updateEntryStatus(q.id, e.id, QueueStatus.CANCELLED)} className="flex items-center justify-center gap-2 py-3 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-red-100 transition-all col-span-2">
-                                  <X className="w-4 h-4" /> CANCEL TURN
                                 </button>
                               </div>
                             </div>
@@ -421,7 +422,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
 
           {currentShop && viewMode === 'insights' && analytics && (
             <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-              <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
+               <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
                 {(['daily', 'weekly', 'yearly'] as Timeframe[]).map((t) => (
                   <button
                     key={t}
@@ -439,7 +440,6 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                 <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-3">
                   <div className="flex justify-between items-center">
                     <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><TrendingUp className="w-5 h-5" /></div>
-                    <span className="text-xs font-bold text-green-500 flex items-center gap-0.5"><ArrowUpRight className="w-3 h-3" /> 12%</span>
                   </div>
                   <div>
                     <p className="text-3xl font-black text-black">{analytics.totalServed}</p>
@@ -456,35 +456,79 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
                   </div>
                 </div>
               </div>
+
+              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-center mb-8">
+                  <h4 className="text-lg font-black text-black">Served Growth Trend</h4>
+                  <div className="text-[10px] text-indigo-600 font-black uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Peak: {analytics.peakTime}</div>
+                </div>
+                
+                <div className="relative h-48 w-full">
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 400 100" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.2" />
+                        <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path 
+                      d={`M ${analytics.growthData.map((val, i) => `${(i * 400) / (analytics.growthData.length - 1)},${100 - (val / Math.max(...analytics.growthData) * 80)}`).join(' L ')}`} 
+                      fill="none" 
+                      stroke="#4f46e5" 
+                      strokeWidth="3" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                    <path 
+                      d={`M 0,100 L ${analytics.growthData.map((val, i) => `${(i * 400) / (analytics.growthData.length - 1)},${100 - (val / Math.max(...analytics.growthData) * 80)}`).join(' L ')} L 400,100 Z`} 
+                      fill="url(#chartGradient)" 
+                    />
+                  </svg>
+                  <div className="flex justify-between mt-6 px-1">
+                    {analytics.labels.map(label => (
+                      <span key={label} className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{label}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-center mb-8">
+                  <h4 className="text-lg font-black text-black">Peak Traffic Hours</h4>
+                </div>
+                
+                <div className="flex items-end justify-between h-32 gap-1.5">
+                  {analytics.trafficData.map((val, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                      <div 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-t-lg transition-all hover:bg-indigo-100 group-hover:border-indigo-200 relative" 
+                        style={{ height: `${(val / Math.max(...analytics.trafficData)) * 100}%` }}
+                      >
+                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] py-1 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap">{val} clients</div>
+                      </div>
+                      <span className="text-[7px] font-black text-slate-300 uppercase">{analytics.labels[i % analytics.labels.length]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </>
       )}
 
       {showAddShop && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 my-8 animate-in zoom-in duration-300 shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 animate-in zoom-in duration-300 shadow-2xl">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-2xl font-black text-slate-900">Add New Shop</h3>
+              <h3 className="text-2xl font-black text-slate-900">New Shop</h3>
               <button onClick={() => setShowAddShop(false)} className="p-3 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
             </div>
             <form onSubmit={handleAddShop} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Business Identity</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Shop Name" value={newShopData.name} onChange={e => setNewShopData({...newShopData, name: e.target.value})} />
-                  <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Category" value={newShopData.category} onChange={e => setNewShopData({...newShopData, category: e.target.value})} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact & Reach</label>
-                <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Phone" value={newShopData.phone} onChange={e => setNewShopData({...newShopData, phone: e.target.value})} />
-                <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-medium focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Full Address" value={newShopData.address} onChange={e => setNewShopData({...newShopData, address: e.target.value})} />
-              </div>
-              <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setShowAddShop(false)} className="flex-1 font-black text-slate-500 uppercase tracking-widest text-sm">Cancel</button>
-                <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all">Launch Shop</button>
-              </div>
+              <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200" placeholder="Shop Name" value={newShopData.name} onChange={e => setNewShopData({...newShopData, name: e.target.value})} />
+              <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200" placeholder="Category" value={newShopData.category} onChange={e => setNewShopData({...newShopData, category: e.target.value})} />
+              <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200" placeholder="Phone" value={newShopData.phone} onChange={e => setNewShopData({...newShopData, phone: e.target.value})} />
+              <input required className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200" placeholder="Full Address" value={newShopData.address} onChange={e => setNewShopData({...newShopData, address: e.target.value})} />
+              <button type="submit" className="w-full py-4 bg-indigo-600 text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl hover:bg-indigo-700 transition-all">Launch Shop</button>
             </form>
           </div>
         </div>
@@ -498,7 +542,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
             <div className="space-y-4 mb-8">
               <input 
                 className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 text-black font-bold focus:ring-2 focus:ring-indigo-500 outline-none" 
-                placeholder="e.g. Premium VIP, Express" 
+                placeholder="e.g. VIP Consultation" 
                 value={newQueueName} 
                 onChange={e => setNewQueueName(e.target.value)} 
               />
@@ -506,7 +550,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
               <div className="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <div className="flex flex-col">
                   <span className="text-xs font-black uppercase tracking-widest text-slate-700">Slot Booking</span>
-                  <span className="text-[9px] font-bold text-slate-400">Enable appointment slots</span>
+                  <span className="text-[9px] font-bold text-slate-400">Enable scheduled visits</span>
                 </div>
                 <button 
                   onClick={() => setIsSlotBooking(!isSlotBooking)}
@@ -541,8 +585,8 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
             </div>
 
             <div className="flex gap-4">
-              <button onClick={() => setShowAddQueue(null)} className="flex-1 text-slate-500 font-black uppercase tracking-widest text-xs">Back</button>
-              <button onClick={() => handleAddQueue(showAddQueue)} className="flex-1 py-4 bg-indigo-600 text-white rounded-[1rem] font-black uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Add Line</button>
+              <button onClick={() => setShowAddQueue(null)} className="flex-1 text-slate-500 font-black uppercase tracking-widest text-xs">Cancel</button>
+              <button onClick={() => handleAddQueue(showAddQueue)} className="flex-1 py-4 bg-indigo-600 text-white rounded-[1rem] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all">Add Line</button>
             </div>
           </div>
         </div>
@@ -552,29 +596,18 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 flex flex-col items-center animate-in zoom-in duration-300">
             <div className="w-full flex justify-between items-center mb-8">
-              <div className="flex items-center gap-2">
-                 <Sparkles className="w-5 h-5 text-indigo-600" />
-                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Business QR</h3>
-              </div>
+              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Business QR</h3>
               <button onClick={() => setShowQrModal(null)} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"><X className="w-5 h-5 text-slate-500" /></button>
             </div>
             <div className="bg-white p-6 rounded-[2rem] border-4 border-indigo-50 mb-8 shadow-inner overflow-hidden flex items-center justify-center">
               {qrDataUrl ? <img src={qrDataUrl} alt="Shop QR" className="w-56 h-56 rounded-lg" /> : <div className="w-56 h-56 animate-pulse bg-slate-100 rounded-lg"></div>}
             </div>
-            <div className="text-center mb-10">
-               <h4 className="text-lg font-black text-slate-900 mb-1">{showQrModal.name}</h4>
-               <p className="text-xs text-slate-400 font-medium px-4 line-clamp-2">{showQrModal.address}</p>
-            </div>
             <button 
               disabled={isGeneratingPoster || !qrDataUrl}
               onClick={downloadBrandedQr} 
-              className="w-full bg-indigo-600 text-white py-4 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+              className="w-full bg-indigo-600 text-white py-4 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all"
             >
-              {isGeneratingPoster ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                <><Download className="w-5 h-5" /> Save QR Poster</>
-              )}
+              <Download className="w-5 h-5" /> Save QR Poster
             </button>
           </div>
         </div>
