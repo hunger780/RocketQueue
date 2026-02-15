@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
-import { getMockServiceSchedule, getCustomerAnalytics } from '../mockData';
-import { Search, QrCode, MapPin, Users, ChevronRight, X, BellRing, Navigation, Trash2, Phone, BadgeCheck, TrendingUp, Zap, Clock3, Award, Sparkles, LocateFixed } from 'lucide-react';
+import { getMockServiceSchedule, getCustomerAnalytics, findServices } from '../mockData';
+import { Search, QrCode, MapPin, Users, ChevronRight, X, BellRing, Navigation, Trash2, Phone, BadgeCheck, TrendingUp, Zap, Clock3, Award, Sparkles, LocateFixed, Loader2 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface CustomerViewProps {
@@ -23,6 +23,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   const [myQueues, setMyQueues] = useState<({ shopName: string, queueName: string, entry: QueueEntry, shopId: string, queueId: string, shop: Shop })[]>([]);
   const [showScanner, setShowScanner] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -59,25 +60,33 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     return ['All', ...Array.from(categoriesSet)];
   }, [shops]);
 
+  // Use the mock API for searching
   useEffect(() => {
-    let result = shops;
+    let active = true;
     
-    // Filter by Category
-    if (selectedCategory !== 'All') {
-      result = result.filter(s => s.category === selectedCategory);
-    }
+    const performSearch = async () => {
+      setIsSearching(true);
+      try {
+        // We pass 'shops' (all mock shops) to the function to simulate the "database"
+        // In a real app, this would just be an API call params
+        const results = await findServices(shops, searchQuery, selectedCategory);
+        if (active) {
+          setFilteredShops(results);
+        }
+      } catch (error) {
+        console.error("Search failed", error);
+      } finally {
+        if (active) setIsSearching(false);
+      }
+    };
 
-    // Filter by Search Query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(s => 
-        s.name.toLowerCase().includes(query) || 
-        s.category.toLowerCase().includes(query) ||
-        s.address.toLowerCase().includes(query)
-      );
-    }
-    
-    setFilteredShops(result);
+    // Debounce slightly for typing
+    const timer = setTimeout(performSearch, 400);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [shops, searchQuery, selectedCategory]);
 
   useEffect(() => {
@@ -107,17 +116,27 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   const handleLocateMe = () => {
     if ('geolocation' in navigator) {
       setIsLocating(true);
+      setIsSearching(true);
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           setIsLocating(false);
-          // In a real app, we would use position.coords.latitude and longitude to sort shops
-          // For now, we simulate a "Nearest" sort by just refreshing or showing a toast logic
-          // Let's pretend we sorted them and set category to All to show "all nearby"
-          setSelectedCategory('All');
-          alert(`Location acquired! Showing nearest services around you.`);
+          const { latitude, longitude } = position.coords;
+          
+          try {
+             // Call search with location
+             const results = await findServices(shops, searchQuery, selectedCategory, { lat: latitude, lng: longitude });
+             setFilteredShops(results);
+             // Provide feedback
+             // In a real app we might update a sort order indicator
+          } catch (e) {
+             console.error(e);
+          } finally {
+             setIsSearching(false);
+          }
         },
         (error) => {
           setIsLocating(false);
+          setIsSearching(false);
           console.error("Error getting location", error);
           alert("Unable to retrieve your location. Please check permissions.");
         }
@@ -385,44 +404,55 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {filteredShops.map(s => (
-              <div key={s.id} className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:border-indigo-200 hover:shadow-lg">
-                <div 
-                  onClick={() => setSelectedShop(s)} 
-                  className="flex justify-between items-center cursor-pointer mb-4 group"
-                >
-                  <div className="flex gap-4 items-center">
-                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
-                       <MapPin className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                         <h4 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">{s.name}</h4>
-                         {s.isVerified && <BadgeCheck className="w-5 h-5 text-indigo-600" />}
-                      </div>
-                      <p className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.2em] mt-1 opacity-70">{s.category}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-400" />
-                </div>
-                
-                <div className="flex gap-3 border-t border-slate-50 pt-4">
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); openDirections(s.address); }}
-                    className="flex-1 py-3 bg-slate-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors active:scale-95"
-                  >
-                    <Navigation className="w-3 h-3" /> Directions
-                  </button>
-                  <a 
-                    href={`tel:${s.phone}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors active:scale-95"
-                  >
-                    <Phone className="w-3 h-3" /> Call
-                  </a>
-                </div>
+            {isSearching ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Searching nearby...</p>
               </div>
-            ))}
+            ) : filteredShops.length === 0 ? (
+              <div className="text-center py-12 bg-slate-50 rounded-[2.5rem]">
+                <p className="text-slate-400 font-medium">No services found matching your criteria.</p>
+              </div>
+            ) : (
+              filteredShops.map(s => (
+                <div key={s.id} className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm transition-all hover:border-indigo-200 hover:shadow-lg">
+                  <div 
+                    onClick={() => setSelectedShop(s)} 
+                    className="flex justify-between items-center cursor-pointer mb-4 group"
+                  >
+                    <div className="flex gap-4 items-center">
+                      <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner">
+                         <MapPin className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                           <h4 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-tight">{s.name}</h4>
+                           {s.isVerified && <BadgeCheck className="w-5 h-5 text-indigo-600" />}
+                        </div>
+                        <p className="text-[10px] text-indigo-500 font-black uppercase tracking-[0.2em] mt-1 opacity-70">{s.category}</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-indigo-400" />
+                  </div>
+                  
+                  <div className="flex gap-3 border-t border-slate-50 pt-4">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); openDirections(s.address); }}
+                      className="flex-1 py-3 bg-slate-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors active:scale-95"
+                    >
+                      <Navigation className="w-3 h-3" /> Directions
+                    </button>
+                    <a 
+                      href={`tel:${s.phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 py-3 bg-slate-50 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-100 transition-colors active:scale-95"
+                    >
+                      <Phone className="w-3 h-3" /> Call
+                    </a>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

@@ -25,6 +25,8 @@ export const getMockShops = (): Shop[] => {
       lunchStart: '13:00',
       lunchEnd: '14:00',
       isVerified: true,
+      latitude: 40.785091,
+      longitude: -73.968285,
       serviceLines: [
         {
           id: 'q-r-1',
@@ -64,6 +66,8 @@ export const getMockShops = (): Shop[] => {
       lunchStart: '12:00',
       lunchEnd: '12:30',
       isVerified: false,
+      latitude: 40.758896,
+      longitude: -73.985130,
       serviceLines: [
         {
           id: 'q-r-3',
@@ -84,6 +88,8 @@ export const getMockShops = (): Shop[] => {
       openingTime: '10:00',
       closingTime: '20:00',
       isVerified: true,
+      latitude: 40.7233,
+      longitude: -74.0030,
       serviceLines: [
         {
           id: 'q-r-4',
@@ -96,6 +102,91 @@ export const getMockShops = (): Shop[] => {
             maxCapacity: 1
           }
         }
+      ]
+    },
+    {
+      id: 'shop-r-4',
+      vendorId: 'vendor-o-1',
+      name: 'Tech Fix Central',
+      address: '101 Digital Blvd',
+      phone: '555-9988',
+      category: 'Repair Service',
+      openingTime: '10:00',
+      closingTime: '19:00',
+      isVerified: true,
+      latitude: 40.7128,
+      longitude: -74.0060,
+      serviceLines: [
+        { id: 'q-o-1', name: 'Device Repair', isActive: true, entries: [] },
+        { id: 'q-o-2', name: 'Pickup', isActive: true, entries: [] }
+      ]
+    },
+    {
+      id: 'shop-r-5',
+      vendorId: 'vendor-o-2',
+      name: 'The Burger Joint',
+      address: '55 Tasty Street',
+      phone: '555-7766',
+      category: 'Restaurant',
+      openingTime: '11:00',
+      closingTime: '23:00',
+      isVerified: false,
+      latitude: 40.730610,
+      longitude: -73.935242,
+      serviceLines: [
+        { id: 'q-o-3', name: 'Table Waiting List', isActive: true, entries: [] },
+        { id: 'q-o-4', name: 'Takeout', isActive: true, entries: [] }
+      ]
+    },
+    {
+      id: 'shop-r-6',
+      vendorId: 'vendor-o-3',
+      name: 'City Central Bank',
+      address: '1 Financial District',
+      phone: '555-4433',
+      category: 'Bank',
+      openingTime: '09:00',
+      closingTime: '16:00',
+      isVerified: true,
+      latitude: 40.7074,
+      longitude: -74.0113,
+      serviceLines: [
+        { id: 'q-o-5', name: 'Teller Services', isActive: true, entries: [] },
+        { id: 'q-o-6', name: 'Loan Officer', isActive: true, entries: [] }
+      ]
+    },
+    {
+      id: 'shop-r-7',
+      vendorId: 'vendor-o-4',
+      name: 'Metro Post Office',
+      address: '88 Mail Route',
+      phone: '555-2211',
+      category: 'Government',
+      openingTime: '08:00',
+      closingTime: '17:00',
+      isVerified: true,
+      latitude: 40.7505,
+      longitude: -73.9934,
+      serviceLines: [
+        { id: 'q-o-7', name: 'Package Pickup', isActive: true, entries: [] },
+        { id: 'q-o-8', name: 'Shipping Services', isActive: true, entries: [] }
+      ]
+    },
+    {
+      id: 'shop-r-8',
+      vendorId: 'vendor-o-5',
+      name: 'Dr. Smith Dental',
+      address: '32 Smile Lane',
+      phone: '555-1122',
+      category: 'Medical Clinic',
+      openingTime: '09:00',
+      closingTime: '17:00',
+      isVerified: true,
+      latitude: 40.7736,
+      longitude: -73.9566,
+      serviceLines: [
+        { id: 'q-o-9', name: 'Dental Cleaning', isActive: true, entries: [], slotConfig: { isEnabled: true, duration: 45, maxCapacity: 1 } },
+        { id: 'q-o-10', name: 'Emergency', isActive: true, entries: [] }
       ]
     }
   ];
@@ -430,4 +521,53 @@ export const getMockAuthUser = (email: string): User | null => {
   }
 
   return null;
+};
+
+// 7. Find Services Mock API
+export const findServices = async (
+  allShops: Shop[],
+  query?: string,
+  category?: string,
+  location?: { lat: number; lng: number }
+): Promise<Shop[]> => {
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  let results = allShops;
+
+  if (category && category !== 'All') {
+    results = results.filter(s => s.category === category);
+  }
+
+  if (query) {
+    const q = query.toLowerCase();
+    results = results.filter(s => 
+      s.name.toLowerCase().includes(q) || 
+      s.address.toLowerCase().includes(q) ||
+      s.category.toLowerCase().includes(q)
+    );
+  }
+
+  if (location) {
+    // Simple mock distance sorting (approximate)
+    // In a real backend, this would use a geospatial query
+    results = results.map(s => {
+      // Default to 0,0 if shop has no coordinates for sorting safety
+      const sLat = s.latitude || 0;
+      const sLng = s.longitude || 0;
+      
+      // Calculate distance squared (sufficient for sorting)
+      const distance = Math.pow(sLat - location.lat, 2) + Math.pow(sLng - location.lng, 2);
+      
+      // Attach distance temporarily for sort
+      return { ...s, _sortDistance: distance };
+    })
+    .sort((a: any, b: any) => a._sortDistance - b._sortDistance)
+    .map((s: any) => {
+      const { _sortDistance, ...rest } = s;
+      return rest as Shop;
+    });
+  }
+
+  return results;
 };

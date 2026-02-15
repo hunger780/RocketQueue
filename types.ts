@@ -45,6 +45,8 @@ export interface Shop {
   lunchStart?: string;
   lunchEnd?: string;
   isVerified?: boolean;
+  latitude?: number;
+  longitude?: number;
   serviceLines: Queue[];
 }
 
