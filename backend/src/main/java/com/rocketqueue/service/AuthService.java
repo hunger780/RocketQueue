@@ -1,17 +1,22 @@
 package com.rocketqueue.service;
 
 import com.rocketqueue.entity.Customer;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
+
 public class AuthService {
 
     private final CustomerService customerService;
     private final AuditService auditService;
+
+    public AuthService(CustomerService customerService, AuditService auditService) {
+        this.customerService = customerService;
+        this.auditService = auditService;
+    }
 
     public Optional<Customer> login(String email, String password) {
         // Simple password check (In real app, use BCrypt)

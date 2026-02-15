@@ -18,8 +18,8 @@ public class QueueEntryService {
         return queueEntryRepository.findAll();
     }
 
-    public List<QueueEntry> getEntriesByQueueId(String queueId) {
-        return queueEntryRepository.findByQueueEntityId(queueId);
+    public List<QueueEntry> getEntriesByServiceLineId(String serviceLineId) {
+        return queueEntryRepository.findByServiceLineId(serviceLineId);
     }
 
     public List<QueueEntry> getEntriesByUserId(String userId) {

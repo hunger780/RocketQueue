@@ -14,8 +14,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class BookingService {
 
-    private final BookingRepository bookingRepository;
-    private final AuditService auditService;
+    private BookingRepository bookingRepository;
+    private AuditService auditService;
 
     public List<Booking> getAllBookings() {
         return bookingRepository.findAll();

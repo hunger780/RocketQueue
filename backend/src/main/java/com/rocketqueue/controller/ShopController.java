@@ -4,6 +4,8 @@ import com.rocketqueue.entity.ServiceLine;
 import com.rocketqueue.entity.Shop;
 import com.rocketqueue.service.ShopService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +17,8 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class ShopController {
 
-    private final ShopService shopService;
+	@Autowired
+    private ShopService shopService;
 
     @GetMapping
     public List<Shop> getAllShops(@RequestParam(required = false) String category) {

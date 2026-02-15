@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface QueueEntryRepository extends JpaRepository<QueueEntry, String> {
-    List<QueueEntry> findByQueueEntityId(String queueId);
+    List<QueueEntry> findByServiceLineId(String serviceLineId);
     List<QueueEntry> findByUserId(String userId);
 }

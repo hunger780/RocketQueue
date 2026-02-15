@@ -10,11 +10,15 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor
 public class AuditService {
 
     private final LoginAuditRepository loginAuditRepository;
     private final BookingAuditRepository bookingAuditRepository;
+
+    public AuditService(LoginAuditRepository loginAuditRepository, BookingAuditRepository bookingAuditRepository) {
+        this.loginAuditRepository = loginAuditRepository;
+        this.bookingAuditRepository = bookingAuditRepository;
+    }
 
     public void logLogin(String userId, String status, String ipAddress) {
         LoginAudit audit = new LoginAudit();

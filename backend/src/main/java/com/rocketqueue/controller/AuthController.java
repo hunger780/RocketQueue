@@ -1,9 +1,13 @@
 package com.rocketqueue.controller;
 
+import com.rocketqueue.dto.LoginRequest;
 import com.rocketqueue.entity.Customer;
 import com.rocketqueue.service.AuthService;
 import lombok.Data;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "*")
 public class AuthController {
 
-    private final AuthService authService;
+    private AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<Customer> login(@RequestBody LoginRequest loginRequest) {
@@ -22,9 +26,4 @@ public class AuthController {
                 .orElse(ResponseEntity.status(401).build());
     }
 
-    @Data
-    public static class LoginRequest {
-        private String email;
-        private String password;
-    }
 }

@@ -12,7 +12,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CustomerService {
 
-    private final CustomerRepository customerRepository;
+    private CustomerRepository customerRepository;
 
     public List<Customer> getAllCustomers() {
         return customerRepository.findAll();

@@ -15,8 +15,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ShopService {
 
-    private final ShopRepository shopRepository;
-    private final ServiceLineRepository serviceLineRepository;
+    private ShopRepository shopRepository;
+    private ServiceLineRepository serviceLineRepository;
 
     public List<Shop> getAllShops() {
         return shopRepository.findAll();

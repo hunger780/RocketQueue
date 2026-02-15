@@ -3,6 +3,8 @@ package com.rocketqueue.controller;
 import com.rocketqueue.entity.Customer;
 import com.rocketqueue.service.CustomerService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +16,8 @@ import java.util.List;
 @CrossOrigin(origins = "*")
 public class CustomerController {
 
-    private final CustomerService customerService;
+    @Autowired
+	private CustomerService customerService;
 
     @GetMapping
     public List<Customer> getAllCustomers() {
