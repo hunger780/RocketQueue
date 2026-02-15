@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Shop, Queue, QueueEntry, QueueStatus, ServiceSchedule } from '../types';
-import { getMockServiceSchedule } from '../mockData';
-import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon, BadgeCheck, CalendarCheck, TrendingUp, Zap, BarChart3, Clock3, Award, Sparkles, LocateFixed } from 'lucide-react';
+import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
+import { getMockServiceSchedule, getCustomerAnalytics } from '../mockData';
+import { Search, QrCode, MapPin, Users, ChevronRight, X, BellRing, Navigation, Trash2, Phone, BadgeCheck, TrendingUp, Zap, Clock3, Award, Sparkles, LocateFixed } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface CustomerViewProps {
@@ -46,22 +46,10 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     setMyQueues(active);
   }, [shops, user.id]);
 
-  // Personal Insights Logic
+  // Personal Insights Logic - Fetched from Mock
   const personalInsights = useMemo(() => {
-    const tokensHistory = [3, 5, 2, 8, 4, 6, 7]; 
-    const timeSavedHistory = [35, 60, 20, 90, 45, 75, 55]; 
-    const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    return {
-      tokensHistory,
-      timeSavedHistory,
-      labels,
-      totalSaved: timeSavedHistory.reduce((a, b) => a + b, 0),
-      totalTokens: tokensHistory.reduce((a, b) => a + b, 0),
-      reliability: 98,
-      streak: 12
-    };
-  }, []);
+    return getCustomerAnalytics(user.id);
+  }, [user.id]);
 
   const categories = useMemo(() => {
     const categoriesSet = new Set<string>();

@@ -1,5 +1,5 @@
 
-import { Shop, Notification, BackendBooking, ServiceSchedule, QueueStatus } from './types';
+import { Shop, Notification, BackendBooking, ServiceSchedule, QueueStatus, VendorAnalytics, CustomerAnalytics } from './types';
 
 // Helper to get timestamps for today
 const getTodayTimestamp = (hour: number, minute: number, offsetMinutes: number = 0) => {
@@ -326,5 +326,81 @@ export const getMockServiceSchedule = (shop: Shop, serviceLineId: string): Servi
     serviceLineId,
     date: now.toISOString().split('T')[0],
     slots
+  };
+};
+
+// 4. Vendor Dashboard Analytics Mock
+export const getVendorAnalytics = (shopId: string, timeframe: 'daily' | 'weekly' | 'yearly'): VendorAnalytics => {
+  // Simulate active entries count based on shopId (generic for now)
+  const waitingNow = 12; 
+
+  const baseServiceLines = [
+    { id: 'q1', name: 'General Consultation', baseServed: 24, baseWait: 45 },
+    { id: 'q2', name: 'Pharmacy / Pickup', baseServed: 18, baseWait: 12 },
+    { id: 'q3', name: 'Vaccination Drive', baseServed: 6, baseWait: 5 }
+  ];
+
+  if (timeframe === 'weekly') {
+    return {
+      totalServed: 842,
+      avgServiceTime: 16,
+      peakTime: "Saturday",
+      trafficData: [150, 180, 210, 190, 250, 310, 280],
+      growthData: [100, 120, 140, 130, 170, 210, 190],
+      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      waitingNow,
+      growthPercentage: 15,
+      serviceLinesData: baseServiceLines.map(sl => ({
+        ...sl,
+        totalServed: sl.baseServed * 7,
+        avgWaitTime: sl.baseWait
+      }))
+    };
+  } else if (timeframe === 'yearly') {
+    return {
+      totalServed: 24500,
+      avgServiceTime: 15,
+      peakTime: "December",
+      trafficData: [1200, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 1900, 2400, 2800, 3200],
+      growthData: [800, 900, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 2400, 2600, 3000],
+      labels: ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov'],
+      waitingNow,
+      growthPercentage: 22,
+      serviceLinesData: baseServiceLines.map(sl => ({
+        ...sl,
+        totalServed: sl.baseServed * 365,
+        avgWaitTime: sl.baseWait - 2
+      }))
+    };
+  }
+  
+  // Default Daily
+  return {
+    totalServed: 48,
+    avgServiceTime: 18,
+    peakTime: "2:00 PM",
+    trafficData: [12, 19, 15, 8, 22, 30, 25, 18, 12, 14, 20, 10],
+    growthData: [5, 15, 10, 25, 20, 35, 30, 45, 40, 55, 50, 65],
+    labels: ['9a', '11a', '1p', '3p', '5p', '7p', '9p'],
+    waitingNow,
+    growthPercentage: 12,
+    serviceLinesData: baseServiceLines.map(sl => ({
+      ...sl,
+      totalServed: sl.baseServed,
+      avgWaitTime: sl.baseWait
+    }))
+  };
+};
+
+// 5. Customer Dashboard Analytics Mock
+export const getCustomerAnalytics = (userId: string): CustomerAnalytics => {
+  return {
+    tokensHistory: [3, 5, 2, 8, 4, 6, 7],
+    timeSavedHistory: [35, 60, 20, 90, 45, 75, 55],
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    totalSaved: 380,
+    totalTokens: 35,
+    reliability: 98,
+    streak: 12
   };
 };

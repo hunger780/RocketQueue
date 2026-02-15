@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, Shop, QueueStatus } from '../types';
+import { User, Shop } from '../types';
+import { getVendorAnalytics } from '../mockData';
 import { 
   TrendingUp, Timer, ArrowUpRight,
   Sparkles
@@ -26,50 +27,10 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, shops }) => {
 
   const currentShop = shops.find(s => s.id === selectedShopId);
 
+  // Fetch analytics from mock service
   const analytics = useMemo(() => {
     if (!currentShop) return null;
-    const allEntries = currentShop.serviceLines.flatMap(q => q.entries);
-    const completed = allEntries.filter(e => e.status === QueueStatus.COMPLETED);
-    
-    let stats = {
-      totalServed: 0,
-      avgServiceTime: 0,
-      peakTime: "",
-      trafficData: [] as number[],
-      growthData: [] as number[],
-      labels: [] as string[]
-    };
-
-    if (timeframe === 'daily') {
-      stats = {
-        totalServed: completed.length + 42,
-        avgServiceTime: 18,
-        peakTime: "2:00 PM",
-        trafficData: [12, 19, 15, 8, 22, 30, 25, 18, 12, 14, 20, 10],
-        growthData: [5, 15, 10, 25, 20, 35, 30, 45, 40, 55, 50, 65],
-        labels: ['9a', '11a', '1p', '3p', '5p', '7p', '9p']
-      };
-    } else if (timeframe === 'weekly') {
-      stats = {
-        totalServed: (completed.length + 42) * 7,
-        avgServiceTime: 16,
-        peakTime: "Saturday",
-        trafficData: [150, 180, 210, 190, 250, 310, 280],
-        growthData: [100, 120, 140, 130, 170, 210, 190],
-        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-      };
-    } else {
-      stats = {
-        totalServed: (completed.length + 42) * 365,
-        avgServiceTime: 15,
-        peakTime: "December",
-        trafficData: [1200, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 1900, 2400, 2800, 3200],
-        growthData: [800, 900, 1100, 1300, 1500, 1800, 2000, 2200, 2100, 2400, 2600, 3000],
-        labels: ['Jan', 'Mar', 'May', 'Jul', 'Sep', 'Nov']
-      };
-    }
-    
-    return { ...stats, waitingNow: allEntries.filter(e => e.status === QueueStatus.WAITING).length };
+    return getVendorAnalytics(currentShop.id, timeframe);
   }, [currentShop, timeframe]);
 
   if (vendorShops.length === 0) {
@@ -136,10 +97,33 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, shops }) => {
           </div>
 
           <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+            <h4 className="text-lg font-black text-slate-900 mb-6">Service Line Performance</h4>
+            <div className="space-y-6">
+              {analytics.serviceLinesData.map(sl => {
+                const maxVal = Math.max(...analytics.serviceLinesData.map(s => s.totalServed));
+                return (
+                  <div key={sl.id}>
+                    <div className="flex justify-between mb-2">
+                       <span className="font-bold text-slate-700 text-sm">{sl.name}</span>
+                       <span className="font-bold text-slate-900 text-sm">{sl.totalServed} <span className="text-[10px] text-slate-400 font-bold uppercase">Served</span></span>
+                    </div>
+                    <div className="h-3 w-full bg-slate-50 rounded-full overflow-hidden">
+                       <div className="h-full bg-indigo-500 rounded-full transition-all duration-1000 ease-out" style={{width: `${(sl.totalServed / maxVal) * 100}%`}}></div>
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-right">
+                       Avg Wait: {sl.avgWaitTime}m
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
             <div className="flex justify-between items-center mb-8">
               <h4 className="text-lg font-black text-slate-900">Served Volume Trend</h4>
               <div className="text-[10px] text-indigo-600 font-black uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full flex items-center gap-1">
-                <ArrowUpRight className="w-3 h-3" /> +12% vs last
+                <ArrowUpRight className="w-3 h-3" /> +{analytics.growthPercentage}% vs last
               </div>
             </div>
             

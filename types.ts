@@ -118,3 +118,33 @@ export interface Notification {
   timestamp: number;
   read: boolean;
 }
+
+// Analytics Interfaces
+export interface ServiceLineAnalytics {
+  id: string;
+  name: string;
+  totalServed: number;
+  avgWaitTime: number; // in minutes
+}
+
+export interface VendorAnalytics {
+  totalServed: number;
+  avgServiceTime: number;
+  peakTime: string;
+  trafficData: number[];
+  growthData: number[];
+  labels: string[];
+  waitingNow: number;
+  growthPercentage: number;
+  serviceLinesData: ServiceLineAnalytics[];
+}
+
+export interface CustomerAnalytics {
+  tokensHistory: number[];
+  timeSavedHistory: number[];
+  labels: string[];
+  totalSaved: number;
+  totalTokens: number;
+  reliability: number;
+  streak: number;
+}
