@@ -96,6 +96,21 @@ export interface BackendBooking {
   };
 }
 
+// Service Availability Structure
+export interface ServiceSlot {
+  startTime: string; // ISO 8601 String
+  endTime: string;   // ISO 8601 String
+  isAvailable: boolean;
+  capacity: number;
+  bookedCount: number;
+}
+
+export interface ServiceSchedule {
+  serviceLineId: string;
+  date: string; // ISO Date String (YYYY-MM-DD)
+  slots: ServiceSlot[];
+}
+
 export interface Notification {
   id: string;
   userId: string;

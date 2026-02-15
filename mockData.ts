@@ -1,5 +1,5 @@
 
-import { Shop, Notification, BackendBooking } from './types';
+import { Shop, Notification, BackendBooking, ServiceSchedule, QueueStatus } from './types';
 
 // Helper to get timestamps for today
 const getTodayTimestamp = (hour: number, minute: number, offsetMinutes: number = 0) => {
@@ -252,3 +252,79 @@ export const getMockNotifications = (): Notification[] => [
   { id: 'n-2', userId: 'any', message: 'Your estimated wait time has been updated.', timestamp: Date.now() - 600000, read: false },
   { id: 'n-3', userId: 'any', message: 'Clinic Update: Business hours for the weekend have been posted.', timestamp: Date.now() - 3600000, read: true },
 ];
+
+// 3. Service Schedule (Mock Backend Logic)
+export const getMockServiceSchedule = (shop: Shop, serviceLineId: string): ServiceSchedule => {
+  const serviceLine = shop.serviceLines.find(q => q.id === serviceLineId);
+  
+  if (!serviceLine || !serviceLine.slotConfig?.isEnabled) {
+    return { serviceLineId, date: new Date().toISOString().split('T')[0], slots: [] };
+  }
+
+  const duration = serviceLine.slotConfig.duration;
+  const capacity = serviceLine.slotConfig.maxCapacity;
+
+  // Use queue schedule if available, else fallback to shop schedule
+  const startStr = serviceLine.schedule?.startTime || shop.openingTime || "09:00";
+  const endStr = serviceLine.schedule?.endTime || shop.closingTime || "18:00";
+  
+  const [openH, openM] = startStr.split(':').map(Number);
+  const [closeH, closeM] = endStr.split(':').map(Number);
+  
+  const now = new Date();
+  const startTime = new Date(now);
+  startTime.setHours(openH, openM, 0, 0);
+  
+  const endTime = new Date(now);
+  endTime.setHours(closeH, closeM, 0, 0);
+
+  // Parse breaks
+  const breaks = (serviceLine.schedule?.breaks || []).map(b => {
+    const [sh, sm] = b.start.split(':').map(Number);
+    const [eh, em] = b.end.split(':').map(Number);
+    const start = new Date(now);
+    start.setHours(sh, sm, 0, 0);
+    const end = new Date(now);
+    end.setHours(eh, em, 0, 0);
+    return { start: start.getTime(), end: end.getTime() };
+  });
+  
+  const slots = [];
+  let current = startTime;
+
+  const isTerminalStatus = (status: QueueStatus) => {
+    return status === QueueStatus.COMPLETED || status === QueueStatus.CANCELLED || status === QueueStatus.NO_SHOW;
+  };
+  
+  while (current < endTime) {
+    const slotStart = current.getTime();
+    const slotEnd = slotStart + duration * 60000;
+    
+    // Check overlapping breaks
+    const isBreak = breaks.some(b => {
+      return (slotStart >= b.start && slotStart < b.end) || 
+             (slotEnd > b.start && slotEnd <= b.end) ||
+             (slotStart <= b.start && slotEnd >= b.end);
+    });
+
+    if (!isBreak) {
+      const bookedCount = serviceLine.entries.filter(e => e.bookedSlotStart === slotStart && !isTerminalStatus(e.status)).length;
+      
+      slots.push({
+        startTime: current.toISOString(),
+        endTime: new Date(slotEnd).toISOString(),
+        isAvailable: bookedCount < capacity,
+        capacity: capacity,
+        bookedCount: bookedCount
+      });
+    }
+    
+    current = new Date(current.getTime() + duration * 60000);
+  }
+
+  return {
+    serviceLineId,
+    date: now.toISOString().split('T')[0],
+    slots
+  };
+};

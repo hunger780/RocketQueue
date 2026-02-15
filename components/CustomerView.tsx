@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
+import { User, Shop, Queue, QueueEntry, QueueStatus, ServiceSchedule } from '../types';
+import { getMockServiceSchedule } from '../mockData';
 import { Search, QrCode, MapPin, Clock, Users, ChevronRight, X, BellRing, Info, Navigation, Trash2, Phone, Map as MapIcon, BadgeCheck, CalendarCheck, TrendingUp, Zap, BarChart3, Clock3, Award, Sparkles, LocateFixed } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -163,70 +164,6 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     setSelectedQueueForSlot(null);
   };
 
-  const getAvailableSlots = (shop: Shop, queue: Queue) => {
-    if (!queue.slotConfig?.isEnabled) return [];
-    
-    const duration = queue.slotConfig.duration;
-    const capacity = queue.slotConfig.maxCapacity;
-
-    // Use queue schedule if available, else fallback to shop schedule
-    const startStr = queue.schedule?.startTime || shop.openingTime || "09:00";
-    const endStr = queue.schedule?.endTime || shop.closingTime || "18:00";
-    
-    const [openH, openM] = startStr.split(':').map(Number);
-    const [closeH, closeM] = endStr.split(':').map(Number);
-    
-    const now = new Date();
-    const startTime = new Date(now);
-    startTime.setHours(openH, openM, 0, 0);
-    
-    const endTime = new Date(now);
-    endTime.setHours(closeH, closeM, 0, 0);
-
-    // Prepare breaks logic
-    const breaks = (queue.schedule?.breaks || []).map(b => {
-      const [sh, sm] = b.start.split(':').map(Number);
-      const [eh, em] = b.end.split(':').map(Number);
-      const start = new Date(now);
-      start.setHours(sh, sm, 0, 0);
-      const end = new Date(now);
-      end.setHours(eh, em, 0, 0);
-      return { start: start.getTime(), end: end.getTime() };
-    });
-    
-    const slots = [];
-    let current = startTime;
-    
-    while (current < endTime) {
-      const slotStart = current.getTime();
-      const slotEnd = slotStart + duration * 60000;
-      
-      // Check if slot overlaps with any break
-      // We consider a slot overlapping if it starts within a break OR ends within a break
-      // Or if the break is entirely inside the slot (though slot is usually smaller)
-      const isBreak = breaks.some(b => {
-        return (slotStart >= b.start && slotStart < b.end) || 
-               (slotEnd > b.start && slotEnd <= b.end) ||
-               (slotStart <= b.start && slotEnd >= b.end);
-      });
-
-      if (!isBreak) {
-        const bookedCount = queue.entries.filter(e => e.bookedSlotStart === slotStart && !isTerminalStatus(e.status)).length;
-        const isPast = slotStart < now.getTime();
-        
-        slots.push({
-          time: slotStart,
-          isFull: bookedCount >= capacity,
-          isPast,
-          label: current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-      }
-      
-      current = new Date(current.getTime() + duration * 60000);
-    }
-    return slots;
-  };
-
   const leaveQueue = (shopId: string, queueId: string, entryId: string) => {
     if (confirm("Cancel your turn in this line?")) {
       setShops(prevShops => prevShops.map(s => s.id === shopId ? { ...s, serviceLines: s.serviceLines.map(q => q.id === queueId ? { ...q, entries: q.entries.map(e => e.id === entryId ? { ...e, status: QueueStatus.CANCELLED } : e) } : q) } : s));
@@ -236,6 +173,25 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   const openDirections = (address: string) => {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
   };
+
+  // Helper to get slots from mock service
+  const availableSlots = useMemo(() => {
+    if (!selectedQueueForSlot) return [];
+    
+    // Simulate API call to get schedule
+    const schedule = getMockServiceSchedule(selectedQueueForSlot.shop, selectedQueueForSlot.queue.id);
+    const now = new Date();
+
+    return schedule.slots.map(slot => {
+        const startDate = new Date(slot.startTime);
+        return {
+            time: startDate.getTime(),
+            isFull: !slot.isAvailable,
+            isPast: startDate < now,
+            label: startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+    });
+  }, [selectedQueueForSlot]);
 
   if (viewMode === 'insights') {
     return (
@@ -522,7 +478,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
               <button onClick={() => setSelectedQueueForSlot(null)} className="p-3 bg-slate-100 rounded-full hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"><X className="w-6 h-6" /></button>
             </div>
             <div className="grid grid-cols-3 gap-3 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
-              {getAvailableSlots(selectedQueueForSlot.shop, selectedQueueForSlot.queue).map(slot => (
+              {availableSlots.map(slot => (
                 <button key={slot.time} disabled={slot.isFull || slot.isPast} onClick={() => joinQueue(selectedQueueForSlot.shop, selectedQueueForSlot.queue, slot.time)} className={`py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 ${slot.isFull || slot.isPast ? 'bg-slate-50 border-slate-100 text-slate-300 opacity-50' : 'bg-white border-slate-200 text-slate-700 hover:border-indigo-600 hover:text-indigo-600 hover:shadow-lg active:scale-95'}`}>{slot.label}</button>
               ))}
             </div>
