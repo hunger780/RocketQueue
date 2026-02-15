@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole, Shop, Queue, QueueEntry, QueueStatus, Notification, BackendBooking } from './types';
 import { getMockShops, getMockBookings, getMockNotifications } from './mockData';
 import Login from './components/Login';
-import VendorDashboard from './components/VendorDashboard';
+import VendorView from './components/VendorView';
+import DashboardView from './components/DashboardView';
 import CustomerView from './components/CustomerView';
 import ProfileView from './components/ProfileView';
 import { Bell, User as UserIcon, LogOut, LayoutDashboard, Search, BarChart3, X } from 'lucide-react';
@@ -92,13 +93,13 @@ const App: React.FC = () => {
     switch (activeTab) {
       case 'home':
         return user.role === UserRole.VENDOR ? (
-          <VendorDashboard user={user} shops={shops} setShops={setShops} initialView="queues" />
+          <VendorView user={user} shops={shops} setShops={setShops} />
         ) : (
           <CustomerView user={user} shops={shops} setShops={setShops} />
         );
       case 'dashboard':
         return user.role === UserRole.VENDOR ? (
-          <VendorDashboard user={user} shops={shops} setShops={setShops} initialView="insights" />
+          <DashboardView user={user} shops={shops} />
         ) : (
           <CustomerView user={user} shops={shops} setShops={setShops} initialView="insights" />
         );
