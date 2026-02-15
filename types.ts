@@ -45,7 +45,7 @@ export interface Shop {
   lunchStart?: string;
   lunchEnd?: string;
   isVerified?: boolean;
-  queues: Queue[];
+  serviceLines: Queue[];
 }
 
 export interface Queue {
@@ -77,6 +77,23 @@ export interface QueueEntry {
   estimatedMinutes: number;
   alertThreshold?: number; // Minutes before turn to notify
   bookedSlotStart?: number; // Unix timestamp for the start of the booked slot
+}
+
+// Normalized Backend Structure
+export interface BackendBooking {
+  _id: string;
+  customerId: string;
+  shopId: string;
+  serviceLineId: string; 
+  status: string; // 'confirmed', 'waiting', 'serving', 'completed', 'cancelled'
+  appointmentTime?: string; // ISO 8601 String
+  joinedAt?: string; // ISO 8601 String
+  estimatedMinutes?: number;
+  details: {
+    shopName: string;
+    serviceName: string;
+    customerName: string;
+  };
 }
 
 export interface Notification {

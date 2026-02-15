@@ -35,7 +35,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   useEffect(() => {
     const active = [];
     for (const shop of shops) {
-      for (const q of shop.queues) {
+      for (const q of shop.serviceLines) {
         const myEntry = q.entries.find(e => e.userId === user.id && !isTerminalStatus(e.status));
         if (myEntry) {
           active.push({ shopName: shop.name, queueName: q.name, entry: myEntry, shopId: shop.id, queueId: q.id, shop: shop });
@@ -154,7 +154,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     
     setShops(prevShops => prevShops.map(s => s.id === shop.id ? { 
       ...s, 
-      queues: s.queues.map(q => q.id === queue.id ? { 
+      serviceLines: s.serviceLines.map(q => q.id === queue.id ? { 
         ...q, 
         entries: [...q.entries, newEntry] 
       } : q) 
@@ -229,7 +229,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
 
   const leaveQueue = (shopId: string, queueId: string, entryId: string) => {
     if (confirm("Cancel your turn in this line?")) {
-      setShops(prevShops => prevShops.map(s => s.id === shopId ? { ...s, queues: s.queues.map(q => q.id === queueId ? { ...q, entries: q.entries.map(e => e.id === entryId ? { ...e, status: QueueStatus.CANCELLED } : e) } : q) } : s));
+      setShops(prevShops => prevShops.map(s => s.id === shopId ? { ...s, serviceLines: s.serviceLines.map(q => q.id === queueId ? { ...q, entries: q.entries.map(e => e.id === entryId ? { ...e, status: QueueStatus.CANCELLED } : e) } : q) } : s));
     }
   };
 
@@ -378,7 +378,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
                     <p className="text-3xl font-black truncate">
                       {mq.entry.bookedSlotStart 
                         ? new Date(mq.entry.bookedSlotStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        : `#${shops.find(s => s.id === mq.shopId)?.queues.find(q => q.id === mq.queueId)?.entries.filter(e => !isTerminalStatus(e.status)).findIndex(e => e.id === mq.entry.id)! + 1}`}
+                        : `#${shops.find(s => s.id === mq.shopId)?.serviceLines.find(q => q.id === mq.queueId)?.entries.filter(e => !isTerminalStatus(e.status)).findIndex(e => e.id === mq.entry.id)! + 1}`}
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-3xl p-5 backdrop-blur-sm border border-white/5 text-center">
@@ -495,7 +495,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
             </div>
             <div className="space-y-5">
               <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.25em] ml-1">Available Lines</h4>
-              {selectedShop.queues.map(q => (
+              {selectedShop.serviceLines.map(q => (
                 <div key={q.id} className="flex items-center justify-between p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 group">
                   <div className="space-y-1">
                     <p className="font-black text-slate-800 text-xl tracking-tight leading-none mb-1">{q.name}</p>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, Shop, Queue, QueueEntry, QueueStatus, Notification } from './types';
-import { getMockShops, getMockNotifications } from './mockData';
+import { User, UserRole, Shop, Queue, QueueEntry, QueueStatus, Notification, BackendBooking } from './types';
+import { getMockShops, getMockBookings, getMockNotifications } from './mockData';
 import Login from './components/Login';
 import VendorDashboard from './components/VendorDashboard';
 import CustomerView from './components/CustomerView';
@@ -14,10 +14,46 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Adapter function to convert backend Booking to frontend QueueEntry
+  const mapBackendToFrontend = (booking: BackendBooking): QueueEntry => {
+    let status = QueueStatus.WAITING;
+    switch (booking.status) {
+      case 'serving': status = QueueStatus.IN_PROGRESS; break;
+      case 'completed': status = QueueStatus.COMPLETED; break;
+      case 'cancelled': status = QueueStatus.CANCELLED; break;
+      case 'confirmed': status = QueueStatus.WAITING; break;
+      case 'waiting': status = QueueStatus.WAITING; break;
+      default: status = QueueStatus.WAITING;
+    }
+
+    return {
+      id: booking._id,
+      userId: booking.customerId,
+      userName: booking.details.customerName,
+      joinedAt: booking.joinedAt ? new Date(booking.joinedAt).getTime() : Date.now(),
+      status: status,
+      estimatedMinutes: booking.estimatedMinutes || 0,
+      bookedSlotStart: booking.appointmentTime ? new Date(booking.appointmentTime).getTime() : undefined
+    };
+  };
+
   const [shops, setShops] = useState<Shop[]>(() => {
     const saved = localStorage.getItem('qe_shops');
     if (saved) return JSON.parse(saved);
-    return getMockShops();
+    
+    // Simulate Backend Join
+    const mockShops = getMockShops();
+    const mockBookings = getMockBookings();
+
+    return mockShops.map(shop => ({
+      ...shop,
+      serviceLines: shop.serviceLines.map(queue => ({
+        ...queue,
+        entries: mockBookings
+          .filter(b => b.shopId === shop.id && b.serviceLineId === queue.id)
+          .map(mapBackendToFrontend)
+      }))
+    }));
   });
 
   const [notifications, setNotifications] = useState<Notification[]>(() => {

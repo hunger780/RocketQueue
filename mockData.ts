@@ -1,18 +1,16 @@
 
-import { Shop, Notification, QueueStatus } from './types';
+import { Shop, Notification, BackendBooking } from './types';
 
-export const getMockShops = (): Shop[] => {
+// Helper to get timestamps for today
+const getTodayTimestamp = (hour: number, minute: number, offsetMinutes: number = 0) => {
   const now = new Date();
-  // Reset to start of day for slot calculations
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  
-  const getSlotTimestamp = (hour: number, minute: number) => {
-    const t = new Date(todayStart);
-    t.setHours(hour, minute, 0, 0);
-    return t.getTime();
-  };
+  const d = new Date(now);
+  d.setHours(hour, minute, 0, 0);
+  return new Date(d.getTime() + offsetMinutes * 60000);
+};
 
+// 1. Shops Collection (Shops + Service Lines definitions, NO entries)
+export const getMockShops = (): Shop[] => {
   return [
     {
       id: 'shop-r-1',
@@ -27,69 +25,24 @@ export const getMockShops = (): Shop[] => {
       lunchStart: '13:00',
       lunchEnd: '14:00',
       isVerified: true,
-      queues: [
+      serviceLines: [
         {
           id: 'q-r-1',
           name: 'General Consultation',
           isActive: true,
-          entries: [
-            { id: 'e-1', userId: 'u-1', userName: 'Sarah Jenkins', joinedAt: Date.now() - 1200000, status: QueueStatus.IN_PROGRESS, estimatedMinutes: 5 },
-            { id: 'e-2', userId: 'u-2', userName: 'Michael Chen', joinedAt: Date.now() - 600000, status: QueueStatus.WAITING, estimatedMinutes: 15 },
-            { id: 'e-3', userId: 'u-3', userName: 'Emma Wilson', joinedAt: Date.now() - 300000, status: QueueStatus.WAITING, estimatedMinutes: 25 },
-          ]
+          entries: [] // Empty, populated via join
         },
         {
           id: 'q-r-2',
           name: 'Pharmacy / Pickup',
           isActive: true,
-          entries: [
-            { id: 'e-4', userId: 'u-4', userName: 'Robert Brown', joinedAt: Date.now() - 100000, status: QueueStatus.WAITING, estimatedMinutes: 5 },
-          ]
+          entries: []
         },
         {
           id: 'q-r-3-slots',
           name: 'Vaccination Drive',
           isActive: true,
-          entries: [
-            // Fully booked slot at 10:00
-            { 
-              id: 'e-v-1', 
-              userId: 'u-10', 
-              userName: 'Patient Zero', 
-              joinedAt: Date.now() - 100000, 
-              status: QueueStatus.WAITING, 
-              estimatedMinutes: 0,
-              bookedSlotStart: getSlotTimestamp(10, 0)
-            },
-            { 
-              id: 'e-v-2', 
-              userId: 'u-11', 
-              userName: 'Patient One', 
-              joinedAt: Date.now() - 90000, 
-              status: QueueStatus.WAITING, 
-              estimatedMinutes: 0,
-              bookedSlotStart: getSlotTimestamp(10, 0)
-            },
-            { 
-              id: 'e-v-3', 
-              userId: 'u-12', 
-              userName: 'Patient Two', 
-              joinedAt: Date.now() - 80000, 
-              status: QueueStatus.WAITING, 
-              estimatedMinutes: 0,
-              bookedSlotStart: getSlotTimestamp(10, 0)
-            },
-             // Partially booked slot at 14:00
-            { 
-              id: 'e-v-4', 
-              userId: 'u-13', 
-              userName: 'Afternoon Patient', 
-              joinedAt: Date.now() - 70000, 
-              status: QueueStatus.WAITING, 
-              estimatedMinutes: 0,
-              bookedSlotStart: getSlotTimestamp(14, 0)
-            }
-          ],
+          entries: [],
           slotConfig: {
             isEnabled: true,
             duration: 15,
@@ -111,7 +64,7 @@ export const getMockShops = (): Shop[] => {
       lunchStart: '12:00',
       lunchEnd: '12:30',
       isVerified: false,
-      queues: [
+      serviceLines: [
         {
           id: 'q-r-3',
           name: 'Fresh Pastry Line',
@@ -131,22 +84,12 @@ export const getMockShops = (): Shop[] => {
       openingTime: '10:00',
       closingTime: '20:00',
       isVerified: true,
-      queues: [
+      serviceLines: [
         {
           id: 'q-r-4',
           name: 'Haircut Appointments',
           isActive: true,
-          entries: [
-             { 
-              id: 'e-s-1', 
-              userId: 'u-20', 
-              userName: 'John Doe', 
-              joinedAt: Date.now() - 3600000, 
-              status: QueueStatus.COMPLETED, 
-              estimatedMinutes: 0,
-              bookedSlotStart: getSlotTimestamp(10, 30)
-            }
-          ],
+          entries: [],
           slotConfig: {
             isEnabled: true,
             duration: 30,
@@ -154,6 +97,152 @@ export const getMockShops = (): Shop[] => {
           }
         }
       ]
+    }
+  ];
+};
+
+// 2. Bookings Collection (Normalized)
+export const getMockBookings = (): BackendBooking[] => {
+  const now = new Date();
+  
+  return [
+    // City Health Clinic - General Consultation
+    {
+      _id: 'bk_1',
+      customerId: 'u-1',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-1',
+      status: 'serving',
+      joinedAt: new Date(now.getTime() - 1200000).toISOString(),
+      estimatedMinutes: 5,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'General Consultation',
+        customerName: 'Sarah Jenkins'
+      }
+    },
+    {
+      _id: 'bk_2',
+      customerId: 'u-2',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-1',
+      status: 'waiting',
+      joinedAt: new Date(now.getTime() - 600000).toISOString(),
+      estimatedMinutes: 15,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'General Consultation',
+        customerName: 'Michael Chen'
+      }
+    },
+    {
+      _id: 'bk_3',
+      customerId: 'u-3',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-1',
+      status: 'waiting',
+      joinedAt: new Date(now.getTime() - 300000).toISOString(),
+      estimatedMinutes: 25,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'General Consultation',
+        customerName: 'Emma Wilson'
+      }
+    },
+
+    // City Health Clinic - Pharmacy
+    {
+      _id: 'bk_4',
+      customerId: 'u-4',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-2',
+      status: 'waiting',
+      joinedAt: new Date(now.getTime() - 100000).toISOString(),
+      estimatedMinutes: 5,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'Pharmacy / Pickup',
+        customerName: 'Robert Brown'
+      }
+    },
+
+    // City Health Clinic - Vaccination (Slots)
+    {
+      _id: 'bk_v_1',
+      customerId: 'u-10',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-3-slots',
+      status: 'confirmed',
+      appointmentTime: getTodayTimestamp(10, 0).toISOString(),
+      joinedAt: new Date(now.getTime() - 100000).toISOString(),
+      estimatedMinutes: 0,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'Vaccination Drive',
+        customerName: 'Patient Zero'
+      }
+    },
+    {
+      _id: 'bk_v_2',
+      customerId: 'u-11',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-3-slots',
+      status: 'confirmed',
+      appointmentTime: getTodayTimestamp(10, 0).toISOString(),
+      joinedAt: new Date(now.getTime() - 90000).toISOString(),
+      estimatedMinutes: 0,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'Vaccination Drive',
+        customerName: 'Patient One'
+      }
+    },
+    {
+      _id: 'bk_v_3',
+      customerId: 'u-12',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-3-slots',
+      status: 'confirmed',
+      appointmentTime: getTodayTimestamp(10, 0).toISOString(),
+      joinedAt: new Date(now.getTime() - 80000).toISOString(),
+      estimatedMinutes: 0,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'Vaccination Drive',
+        customerName: 'Patient Two'
+      }
+    },
+    {
+      _id: 'bk_v_4',
+      customerId: 'u-13',
+      shopId: 'shop-r-1',
+      serviceLineId: 'q-r-3-slots',
+      status: 'confirmed',
+      appointmentTime: getTodayTimestamp(14, 0).toISOString(),
+      joinedAt: new Date(now.getTime() - 70000).toISOString(),
+      estimatedMinutes: 0,
+      details: {
+        shopName: 'City Health Clinic',
+        serviceName: 'Vaccination Drive',
+        customerName: 'Afternoon Patient'
+      }
+    },
+
+    // Style Studio Salon - Appointments
+    {
+      _id: 'bk_s_1',
+      customerId: 'u-20',
+      shopId: 'shop-r-3',
+      serviceLineId: 'q-r-4',
+      status: 'completed',
+      appointmentTime: getTodayTimestamp(10, 30).toISOString(),
+      joinedAt: new Date(now.getTime() - 3600000).toISOString(),
+      estimatedMinutes: 0,
+      details: {
+        shopName: 'Style Studio Salon',
+        serviceName: 'Haircut Appointments',
+        customerName: 'John Doe'
+      }
     }
   ];
 };

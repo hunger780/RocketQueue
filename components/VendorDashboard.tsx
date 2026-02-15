@@ -61,7 +61,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
 
   const analytics = useMemo(() => {
     if (!currentShop) return null;
-    const allEntries = currentShop.queues.flatMap(q => q.entries);
+    const allEntries = currentShop.serviceLines.flatMap(q => q.entries);
     const completed = allEntries.filter(e => e.status === QueueStatus.COMPLETED);
     
     let stats = {
@@ -205,7 +205,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         vendorId: user.id,
         ...shopFormData,
         isVerified: false,
-        queues: []
+        serviceLines: []
       };
       setShops([...shops, shop]);
       setShowAddShop(false);
@@ -244,7 +244,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
     if (editingQueue) {
       setShops(shops.map(s => s.id === shopId ? {
         ...s,
-        queues: s.queues.map(q => q.id === editingQueue.queue.id ? {
+        serviceLines: s.serviceLines.map(q => q.id === editingQueue.queue.id ? {
           ...q,
           name: queueFormData.name,
           slotConfig,
@@ -261,7 +261,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
         slotConfig,
         schedule
       };
-      setShops(shops.map(s => s.id === shopId ? { ...s, queues: [...s.queues, newQueue] } : s));
+      setShops(shops.map(s => s.id === shopId ? { ...s, serviceLines: [...s.serviceLines, newQueue] } : s));
       setShowAddQueue(null);
     }
     // Reset form
@@ -313,7 +313,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
   const updateEntryStatus = (queueId: string, entryId: string, status: QueueStatus) => {
     setShops(shops.map(s => ({
       ...s,
-      queues: s.queues.map(q => q.id === queueId ? {
+      serviceLines: s.serviceLines.map(q => q.id === queueId ? {
         ...q,
         entries: q.entries.map(e => e.id === entryId ? {
           ...e,
@@ -421,7 +421,7 @@ const VendorDashboard: React.FC<VendorDashboardProps> = ({ user, shops, setShops
               </div>
 
               <div className="space-y-4">
-                {currentShop.queues.map(q => (
+                {currentShop.serviceLines.map(q => (
                   <div key={q.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
                     <div className="flex justify-between items-center mb-6">
                       <div className="flex items-center gap-3">
