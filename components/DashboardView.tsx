@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, Shop } from '../types';
-import { getVendorAnalytics } from '../mockData';
+import { User, Shop, VendorAnalytics } from '../types';
+import { analyticsService } from '../services/api';
 import { 
   TrendingUp, Timer, ArrowUpRight,
-  Sparkles
+  Sparkles, Loader2
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -16,6 +16,9 @@ type Timeframe = 'daily' | 'weekly' | 'yearly';
 
 const DashboardView: React.FC<DashboardViewProps> = ({ user, shops }) => {
   const [timeframe, setTimeframe] = useState<Timeframe>('daily');
+  const [analytics, setAnalytics] = useState<VendorAnalytics | null>(null);
+  const [loading, setLoading] = useState(false);
+  
   const vendorShops = useMemo(() => shops.filter(s => s.vendorId === user.id), [shops, user.id]);
   const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
 
@@ -27,10 +30,22 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, shops }) => {
 
   const currentShop = shops.find(s => s.id === selectedShopId);
 
-  // Fetch analytics from mock service
-  const analytics = useMemo(() => {
-    if (!currentShop) return null;
-    return getVendorAnalytics(currentShop.id, timeframe);
+  // Fetch analytics via service
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      if (!currentShop) return;
+      setLoading(true);
+      try {
+        const data = await analyticsService.getVendorStats(currentShop.id, timeframe);
+        setAnalytics(data);
+      } catch (e) {
+        console.error("Failed to load analytics", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAnalytics();
   }, [currentShop, timeframe]);
 
   if (vendorShops.length === 0) {
@@ -63,7 +78,11 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, shops }) => {
         ))}
       </div>
 
-      {currentShop && analytics && (
+      {loading ? (
+         <div className="py-20 flex justify-center">
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+         </div>
+      ) : (currentShop && analytics && (
         <div className="space-y-6 animate-in fade-in duration-500">
            <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
             {(['daily', 'weekly', 'yearly'] as Timeframe[]).map((t) => (
@@ -179,7 +198,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ user, shops }) => {
             </div>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 };

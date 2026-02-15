@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, Shop, Queue, QueueEntry, QueueStatus, Notification, BackendBooking } from './types';
-import { getMockShops, getMockBookings, getMockNotifications } from './mockData';
+import { User, UserRole, Shop, Notification } from './types';
+import { getMockNotifications } from './mockData';
+import { shopService } from './services/api';
 import Login from './components/Login';
 import VendorView from './components/VendorView';
 import DashboardView from './components/DashboardView';
 import CustomerView from './components/CustomerView';
 import ProfileView from './components/ProfileView';
-import { Bell, User as UserIcon, LogOut, LayoutDashboard, Search, BarChart3, X } from 'lucide-react';
+import { Bell, User as UserIcon, LogOut, LayoutDashboard, Search, BarChart3, X, Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(() => {
@@ -15,47 +16,32 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // Adapter function to convert backend Booking to frontend QueueEntry
-  const mapBackendToFrontend = (booking: BackendBooking): QueueEntry => {
-    let status = QueueStatus.WAITING;
-    switch (booking.status) {
-      case 'serving': status = QueueStatus.IN_PROGRESS; break;
-      case 'completed': status = QueueStatus.COMPLETED; break;
-      case 'cancelled': status = QueueStatus.CANCELLED; break;
-      case 'confirmed': status = QueueStatus.WAITING; break;
-      case 'waiting': status = QueueStatus.WAITING; break;
-      default: status = QueueStatus.WAITING;
-    }
+  const [shops, setShops] = useState<Shop[]>([]);
+  const [isLoadingShops, setIsLoadingShops] = useState(true);
 
-    return {
-      id: booking._id,
-      userId: booking.customerId,
-      userName: booking.details.customerName,
-      joinedAt: booking.joinedAt ? new Date(booking.joinedAt).getTime() : Date.now(),
-      status: status,
-      estimatedMinutes: booking.estimatedMinutes || 0,
-      bookedSlotStart: booking.appointmentTime ? new Date(booking.appointmentTime).getTime() : undefined
+  // Initial Fetch of Shops
+  useEffect(() => {
+    const loadShops = async () => {
+      setIsLoadingShops(true);
+      try {
+        // Try local storage first for immediate render if available
+        const saved = localStorage.getItem('qe_shops');
+        if (saved) {
+           setShops(JSON.parse(saved));
+        }
+
+        // Fetch fresh data from Service (Mock or Real)
+        const fetchedShops = await shopService.getAll();
+        setShops(fetchedShops);
+      } catch (err) {
+        console.error("Failed to load shops", err);
+      } finally {
+        setIsLoadingShops(false);
+      }
     };
-  };
 
-  const [shops, setShops] = useState<Shop[]>(() => {
-    const saved = localStorage.getItem('qe_shops');
-    if (saved) return JSON.parse(saved);
-    
-    // Simulate Backend Join
-    const mockShops = getMockShops();
-    const mockBookings = getMockBookings();
-
-    return mockShops.map(shop => ({
-      ...shop,
-      serviceLines: shop.serviceLines.map(queue => ({
-        ...queue,
-        entries: mockBookings
-          .filter(b => b.shopId === shop.id && b.serviceLineId === queue.id)
-          .map(mapBackendToFrontend)
-      }))
-    }));
-  });
+    loadShops();
+  }, []);
 
   const [notifications, setNotifications] = useState<Notification[]>(() => {
     return getMockNotifications();
@@ -68,7 +54,9 @@ const App: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('qe_shops', JSON.stringify(shops));
+    if (shops.length > 0) {
+      localStorage.setItem('qe_shops', JSON.stringify(shops));
+    }
   }, [shops]);
 
   const handleLogin = (newUser: User) => {
@@ -87,6 +75,15 @@ const App: React.FC = () => {
 
   if (!user) {
     return <Login onLogin={handleLogin} />;
+  }
+
+  if (isLoadingShops && shops.length === 0) {
+     return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+           <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
+           <p className="text-gray-500 font-medium">Loading Rocket Queue...</p>
+        </div>
+     );
   }
 
   const renderContent = () => {

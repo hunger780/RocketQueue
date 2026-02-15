@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Shop, Queue, QueueEntry, QueueStatus } from '../types';
-import { getMockServiceSchedule, getCustomerAnalytics, findServices } from '../mockData';
+import { User, Shop, Queue, QueueEntry, QueueStatus, CustomerAnalytics } from '../types';
+import { getMockServiceSchedule } from '../mockData'; // Keeping this mock for slots logic as it wasn't requested to be moved to service yet
+import { shopService, analyticsService } from '../services/api';
 import { Search, QrCode, MapPin, Users, ChevronRight, X, BellRing, Navigation, Trash2, Phone, BadgeCheck, TrendingUp, Zap, Clock3, Award, Sparkles, LocateFixed, Loader2 } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
@@ -24,6 +25,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   const [showScanner, setShowScanner] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [personalInsights, setPersonalInsights] = useState<CustomerAnalytics | null>(null);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   useEffect(() => {
@@ -47,10 +49,12 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     setMyQueues(active);
   }, [shops, user.id]);
 
-  // Personal Insights Logic - Fetched from Mock
-  const personalInsights = useMemo(() => {
-    return getCustomerAnalytics(user.id);
-  }, [user.id]);
+  // Fetch Personal Insights
+  useEffect(() => {
+    if (viewMode === 'insights') {
+      analyticsService.getCustomerStats(user.id).then(setPersonalInsights).catch(console.error);
+    }
+  }, [viewMode, user.id]);
 
   const categories = useMemo(() => {
     const categoriesSet = new Set<string>();
@@ -60,16 +64,14 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     return ['All', ...Array.from(categoriesSet)];
   }, [shops]);
 
-  // Use the mock API for searching
+  // Use Service for Search
   useEffect(() => {
     let active = true;
     
     const performSearch = async () => {
       setIsSearching(true);
       try {
-        // We pass 'shops' (all mock shops) to the function to simulate the "database"
-        // In a real app, this would just be an API call params
-        const results = await findServices(shops, searchQuery, selectedCategory);
+        const results = await shopService.search(searchQuery, selectedCategory);
         if (active) {
           setFilteredShops(results);
         }
@@ -80,14 +82,12 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
       }
     };
 
-    // Debounce slightly for typing
     const timer = setTimeout(performSearch, 400);
-
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [shops, searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory]); // Removed 'shops' dependency as search is now an "API" call
 
   useEffect(() => {
     if (showScanner) {
@@ -123,11 +123,9 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
           const { latitude, longitude } = position.coords;
           
           try {
-             // Call search with location
-             const results = await findServices(shops, searchQuery, selectedCategory, { lat: latitude, lng: longitude });
+             // Call search service with location
+             const results = await shopService.search(searchQuery, selectedCategory, { lat: latitude, lng: longitude });
              setFilteredShops(results);
-             // Provide feedback
-             // In a real app we might update a sort order indicator
           } catch (e) {
              console.error(e);
           } finally {
@@ -160,6 +158,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
       bookedSlotStart: slotStart
     };
     
+    // In a real implementation, this would call `bookingService.join()`
     setShops(prevShops => prevShops.map(s => s.id === shop.id ? { 
       ...s, 
       serviceLines: s.serviceLines.map(q => q.id === queue.id ? { 
@@ -173,6 +172,7 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
 
   const leaveQueue = (shopId: string, queueId: string, entryId: string) => {
     if (confirm("Cancel your turn in this line?")) {
+      // In a real implementation, this would call `bookingService.leave()`
       setShops(prevShops => prevShops.map(s => s.id === shopId ? { ...s, serviceLines: s.serviceLines.map(q => q.id === queueId ? { ...q, entries: q.entries.map(e => e.id === entryId ? { ...e, status: QueueStatus.CANCELLED } : e) } : q) } : s));
     }
   };
@@ -181,11 +181,10 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
   };
 
-  // Helper to get slots from mock service
   const availableSlots = useMemo(() => {
     if (!selectedQueueForSlot) return [];
     
-    // Simulate API call to get schedule
+    // Simulate API call to get schedule for specific queue
     const schedule = getMockServiceSchedule(selectedQueueForSlot.shop, selectedQueueForSlot.queue.id);
     const now = new Date();
 
@@ -201,6 +200,8 @@ const CustomerView: React.FC<CustomerViewProps> = ({ user, shops, setShops, forc
   }, [selectedQueueForSlot]);
 
   if (viewMode === 'insights') {
+    if (!personalInsights) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-indigo-600" /></div>;
+
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-12">
         <div className="flex justify-between items-center">

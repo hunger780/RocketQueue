@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
-import { getMockAuthUser } from '../mockData';
+import { authService } from '../services/api';
+import { parseJwt, generateMockJwt } from '../utils';
 import { 
   User as UserIcon, 
   Building2, 
@@ -56,41 +57,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     return () => clearTimeout(timer);
   }, [isLoginMode]);
 
-  const parseJwt = (token: string) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const createMockToken = (user: User) => {
-    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-    const payload = btoa(JSON.stringify({
-      sub: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24) // 24 hours
-    }));
-    // Mock signature
-    return `${header}.${payload}.mock_signature_hash`;
-  };
-
-  const handleGoogleResponse = (response: any) => {
+  const handleGoogleResponse = async (response: any) => {
     setLoading(true);
     const payload = parseJwt(response.credential);
     
     if (payload) {
-      setTimeout(() => {
-        // Check if this google user matches a mock user
-        const mockUser = getMockAuthUser(payload.email);
+      try {
+        // Attempt login via service
+        // For Google Auth in this demo, we simulate checking against our mock DB first
+        const mockUser = await authService.login(payload.email);
         
         let newUser: User;
         if (mockUser) {
@@ -106,25 +81,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           };
         }
         
-        // Store mock token
-        const token = createMockToken(newUser);
+        const token = generateMockJwt(newUser);
         localStorage.setItem('qe_auth_token', token);
 
         onLogin(newUser);
+      } catch (e) {
+        console.error("Login failed", e);
+      } finally {
         setLoading(false);
-      }, 1000);
+      }
     } else {
       setLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    setTimeout(() => {
-      // Check mock credentials
-      const mockUser = getMockAuthUser(formData.email);
+    try {
+      // Check mock credentials via service
+      const mockUser = await authService.login(formData.email);
       let newUser: User;
 
       if (mockUser) {
@@ -140,13 +117,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         };
       }
 
-      // Generate and store mock JWT
-      const token = createMockToken(newUser);
+      const token = generateMockJwt(newUser);
       localStorage.setItem('qe_auth_token', token);
 
       onLogin(newUser);
+    } catch (e) {
+       console.error("Login failed", e);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   const isVendor = role === UserRole.VENDOR;
