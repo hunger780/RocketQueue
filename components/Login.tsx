@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
+import { getMockAuthUser } from '../mockData';
 import { 
   User as UserIcon, 
   Building2, 
@@ -68,22 +69,50 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }
   };
 
+  const createMockToken = (user: User) => {
+    const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+    const payload = btoa(JSON.stringify({
+      sub: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24) // 24 hours
+    }));
+    // Mock signature
+    return `${header}.${payload}.mock_signature_hash`;
+  };
+
   const handleGoogleResponse = (response: any) => {
     setLoading(true);
     const payload = parseJwt(response.credential);
     
     if (payload) {
       setTimeout(() => {
-        const newUser: User = {
-          id: payload.sub,
-          name: payload.name,
-          email: payload.email,
-          phone: '', 
-          role: role
-        };
+        // Check if this google user matches a mock user
+        const mockUser = getMockAuthUser(payload.email);
+        
+        let newUser: User;
+        if (mockUser) {
+           newUser = mockUser;
+        } else {
+           // Create new user from google payload if not mocked
+           newUser = {
+            id: payload.sub,
+            name: payload.name,
+            email: payload.email,
+            phone: '', 
+            role: role // Default to selected role for new users
+          };
+        }
+        
+        // Store mock token
+        const token = createMockToken(newUser);
+        localStorage.setItem('qe_auth_token', token);
+
         onLogin(newUser);
         setLoading(false);
-      }, 500);
+      }, 1000);
     } else {
       setLoading(false);
     }
@@ -94,14 +123,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setLoading(true);
     
     setTimeout(() => {
-      const isMockUser = formData.email.toLowerCase() === 'r@r.com';
-      const newUser: User = {
-        id: isMockUser ? 'vendor-r-mock' : Math.random().toString(36).substr(2, 9),
-        ...formData,
-        name: isMockUser && !formData.name ? 'Premium Vendor' : (formData.name || 'User'),
-        age: parseInt(formData.age) || undefined,
-        role
-      };
+      // Check mock credentials
+      const mockUser = getMockAuthUser(formData.email);
+      let newUser: User;
+
+      if (mockUser) {
+        newUser = mockUser;
+      } else {
+        // Generic User Creation
+        newUser = {
+          id: Math.random().toString(36).substr(2, 9),
+          ...formData,
+          name: formData.name || 'User',
+          age: parseInt(formData.age) || undefined,
+          role: role // Use the selected toggle role
+        };
+      }
+
+      // Generate and store mock JWT
+      const token = createMockToken(newUser);
+      localStorage.setItem('qe_auth_token', token);
+
       onLogin(newUser);
       setLoading(false);
     }, 800);

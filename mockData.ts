@@ -1,5 +1,5 @@
 
-import { Shop, Notification, BackendBooking, ServiceSchedule, QueueStatus, VendorAnalytics, CustomerAnalytics } from './types';
+import { Shop, Notification, BackendBooking, ServiceSchedule, QueueStatus, VendorAnalytics, CustomerAnalytics, User, UserRole } from './types';
 
 // Helper to get timestamps for today
 const getTodayTimestamp = (hour: number, minute: number, offsetMinutes: number = 0) => {
@@ -403,4 +403,31 @@ export const getCustomerAnalytics = (userId: string): CustomerAnalytics => {
     reliability: 98,
     streak: 12
   };
+};
+
+// 6. Mock Authentication Data
+export const getMockAuthUser = (email: string): User | null => {
+  const normalizedEmail = email.toLowerCase();
+  
+  if (normalizedEmail === 'r@r.com') {
+    return {
+      id: 'vendor-r-mock',
+      name: 'Premium Vendor',
+      email: 'r@r.com',
+      phone: '123-456-7890',
+      role: UserRole.VENDOR
+    };
+  }
+  
+  if (normalizedEmail === 'asd@asd.com') {
+    return {
+      id: 'u-1',
+      name: 'Sarah Jenkins',
+      email: 'asd@asd.com',
+      phone: '555-0123',
+      role: UserRole.CUSTOMER
+    };
+  }
+
+  return null;
 };
